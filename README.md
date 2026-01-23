@@ -1,9 +1,12 @@
 ```text
 RSS-агрегатор с автоматической кластеризацией контента на основе TF-IDF и cosine similarity. Система собирает новости из множества источников, группирует их по темам и экспортирует отчёты.
 
+
 ## Архитектура
 
+
 ### Компоненты системы
+
 
 ```
 
@@ -44,7 +47,9 @@ RSS-агрегатор с автоматической кластеризаци�
 
 ```
 
+
 ## Технологический стек
+
 
 ### Backend
 - **Runtime:** Node.js 24+
@@ -54,10 +59,12 @@ RSS-агрегатор с автоматической кластеризаци�
 - **Logging:** pino + pino-pretty
 - **HTTP:** axios (retry + proxy support)
 
+
 ### Frontend
 - **Framework:** Next.js 15.1.4 (App Router)
 - **UI:** React 19, Tailwind CSS, shadcn/ui
 - **State:** React Server Components + API Routes
+
 
 ### DevOps
 - **Package Manager:** npm
@@ -65,7 +72,9 @@ RSS-агрегатор с автоматической кластеризаци�
 - **Build:** Next.js production build
 - **Process Management:** npm scripts (worker, dev)
 
+
 ## Структура проекта
+
 
 ```
 
@@ -135,10 +144,13 @@ pain-analyzer/
 
 ```
 
+
 ## База данных (SQLite Schema)
+
 
 ### Таблица: `sources`
 RSS-источники для сбора контента.
+
 
 ```sql
 CREATE TABLE sources (
@@ -170,6 +182,7 @@ CREATE TABLE documents (
   source_name TEXT NOT NULL,            -- Denormalized for perf
   FOREIGN KEY (source_id) REFERENCES sources(id)
 );
+
 
 CREATE INDEX idx_documents_source_id ON documents(source_id);
 CREATE INDEX idx_documents_published_at ON documents(published_at);
@@ -294,8 +307,10 @@ function computeTFIDF(documents: Document[]) {
   // TF (term frequency): как часто слово встречается в документе
   const tf = computeTermFrequency(doc);
 
+
   // IDF (inverse document frequency): насколько уникально слово
   const idf = Math.log(totalDocs / docsContainingTerm);
+
 
   // TF-IDF = TF × IDF
   return tf * idf;
@@ -324,8 +339,10 @@ function greedyCluster(docs: Document[], threshold: number, minSize: number) {
   // 1. Сортируем документы по длине (DESC)
   docs.sort((a, b) => b.title.length - a.title.length);
 
+
   for (const coreDoc of docs) {
     const group = [coreDoc];
+
 
     // 2. Находим похожие документы
     for (const candidate of remainingDocs) {
@@ -333,6 +350,7 @@ function greedyCluster(docs: Document[], threshold: number, minSize: number) {
         group.push(candidate);
       }
     }
+
 
     // 3. Если группа >= minSize → создаём кластер
     if (group.length >= minSize) {
@@ -566,7 +584,7 @@ function greedyCluster(docs: Document[], threshold: number, minSize: number) {
 ### Шаг 1: Клонирование и установка
 
 ```bash
-git clone https://github.com/mixamonakh/pain-analyzer.git
+git clone [https://github.com/mixamonakh/pain-analyzer.git](https://github.com/mixamonakh/pain-analyzer.git)
 cd pain-analyzer
 npm install
 ```
@@ -751,6 +769,7 @@ sqlite3 pain-analyzer.db "INSERT INTO sources (name, feed_url, plugin_type, enab
 # Проверьте БД
 sqlite3 pain-analyzer.db ".tables"
 
+
 # Если таблицы нет, запустите seed
 npm run seed
 ```
@@ -761,6 +780,7 @@ npm run seed
 ```bash
 # Снизьте порог
 sqlite3 pain-analyzer.db "UPDATE config SET value='0.18' WHERE key='cluster_threshold'"
+
 
 # Снизьте min_cluster_size
 sqlite3 pain-analyzer.db "UPDATE config SET value='2' WHERE key='min_cluster_size'"
@@ -820,6 +840,791 @@ MIT
 
 **Миша (mixamonakh)**
 Frontend Developer, Moscow
-GitHub: https://github.com/mixamonakh
+GitHub: [https://github.com/mixamonakh](https://github.com/mixamonakh)
 
 ---
+
+```markdown
+# Pain Analyzer
+
+RSS-агрегатор с автоматической кластеризацией контента на основе TF-IDF и cosine similarity. Система собирает новости из множества источников, группирует их по темам и экспортирует отчёты.
+
+## Архитектура
+
+### Компоненты системы
+
+```
+
+┌─────────────────────────────────────────────────┐
+│              RSS Sources                         │
+│  Habr | VC.ru | TechCrunch | The Verge | ...    │
+└───────────────┬─────────────────────────────────┘
+↓
+┌───────────────────────────────────────────────┐
+│              Worker Process                    │
+│  - Fetch RSS feeds                             │
+│  - Parse items                                 │
+│  - Normalize URLs                              │
+│  - Deduplicate                                 │
+└───────────────┬───────────────────────────────┘
+↓
+┌───────────────────────────────────────────────┐
+│           SQLite Database                      │
+│  - documents                                   │
+│  - sources                                     │
+│  - clusters                                    │
+│  - runs                                        │
+│  - config                                      │
+└───────────────┬───────────────────────────────┘
+↓
+┌───────────────────────────────────────────────┐
+│         Clustering Pipeline                    │
+│  Tokenize → TF-IDF → Cosine Sim → Group       │
+└───────────────┬───────────────────────────────┘
+↓
+┌───────────────────────────────────────────────┐
+│              Next.js Frontend                  │
+│  - Dashboard (runs list)                       │
+│  - Sources management                          │
+│  - Documents view with pagination              │
+│  - Clusters view                               │
+│  - Export (JSON/JSONL/MD/ZIP)                  │
+└───────────────────────────────────────────────┘
+
+```
+
+## Технологический стек
+
+### Backend
+- **Runtime:** Node.js 24+
+- **Database:** SQLite 3 + Drizzle ORM
+- **RSS Parsing:** rss-parser
+- **NLP:** natural (tokenization), stopword (RU+EN)
+- **Logging:** pino + pino-pretty
+- **HTTP:** axios (retry + proxy support)
+
+### Frontend
+- **Framework:** Next.js 15.5.9 (App Router)
+- **UI:** React 19, Tailwind CSS
+- **State:** React Server Components + API Routes
+- **TypeScript:** 5.7.3 (strict mode)
+
+### DevOps
+- **Package Manager:** npm
+- **Build:** Next.js production build
+- **Process Management:** npm scripts (worker, dev)
+
+## Структура проекта
+
+```
+
+pain-analyzer/
+├── src/
+│   ├── app/                    \# Next.js App Router
+│   │   ├── api/                \# API Routes
+│   │   │   ├── clusters/       \# GET /api/clusters, /api/clusters/:id
+│   │   │   ├── export/         \# GET /api/export/:runId (ZIP download)
+│   │   │   ├── logs/           \# GET /api/logs?runId=X
+│   │   │   ├── runs/           \# GET/POST /api/runs, /api/runs/start
+│   │   │   ├── search/         \# GET /api/search?q=...
+│   │   │   └── sources/        \# CRUD /api/sources
+│   │   ├── clusters/[id]/      \# Cluster detail page
+│   │   ├── documents/          \# Documents list with pagination
+│   │   │   └── page.tsx
+│   │   ├── runs/[id]/          \# Run detail page
+│   │   ├── search/             \# Search page
+│   │   ├── sources/            \# Sources management page
+│   │   ├── layout.tsx          \# Root layout
+│   │   └── page.tsx            \# Dashboard (home)
+│   │
+│   ├── components/
+│   │   ├── ui/                 \# UI components
+│   │   │   ├── Badge.tsx
+│   │   │   ├── Button.tsx      \# с onClick, disabled, size: sm|md|lg
+│   │   │   ├── Card.tsx
+│   │   │   ├── Input.tsx       \# с value, onChange
+│   │   │   ├── Link.tsx
+│   │   │   └── Table.tsx
+│   │   ├── AddPresetsButton.tsx
+│   │   ├── AddSourceButton.tsx
+│   │   ├── ClustersList.tsx
+│   │   ├── DocumentCard.tsx
+│   │   ├── ExportButton.tsx
+│   │   ├── Modal.tsx
+│   │   ├── RunsTable.tsx
+│   │   ├── SearchInput.tsx     \# с placeholder prop
+│   │   ├── SourcesList.tsx
+│   │   └── StartRunButton.tsx
+│   │
+│   ├── db/
+│   │   ├── index.ts            \# Drizzle client
+│   │   ├── schema.ts           \# DB schema export
+│   │   ├── seed.ts             \# Initial data seeding
+│   │   └── tables.ts           \# Table definitions
+│   │
+│   ├── lib/
+│   │   ├── clustering.ts       \# Main clustering logic
+│   │   ├── export.ts           \# Export to JSON/JSONL/MD/ZIP
+│   │   ├── hashing.ts          \# MD5 URL hashing
+│   │   ├── logger.ts           \# Pino logger setup
+│   │   ├── normalizeUrl.ts     \# URL normalization
+│   │   ├── retention.ts        \# Data cleanup
+│   │   ├── rss.ts              \# RSS fetching with retry
+│   │   ├── tfidf.ts            \# TF-IDF implementation
+│   │   ├── tokenize.ts         \# Text tokenization
+│   │   └── types.ts            \# Shared TypeScript types
+│   │
+│   ├── scripts/
+│   │   └── maintenance.ts      \# Manual DB maintenance
+│   │
+│   └── worker/
+│       └── index.ts            \# Worker process (fetch + cluster + export)
+│
+├── pain-analyzer.db            \# SQLite database file
+├── logs/                       \# JSONL log files (per run)
+├── exports/                    \# Generated exports (ZIP archives)
+├── drizzle.config.ts           \# Drizzle ORM config
+├── next.config.ts              \# Next.js config
+├── tailwind.config.ts          \# Tailwind config
+├── tsconfig.json               \# TypeScript config
+├── package.json                \# Dependencies
+└── README.md                   \# This file
+
+```
+
+## База данных (SQLite Schema)
+
+### Таблица: `sources`
+RSS-источники для сбора контента.
+
+```sql
+CREATE TABLE sources (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,               -- "TechCrunch"
+  feed_url TEXT NOT NULL UNIQUE,    -- "https://techcrunch.com/feed/"
+  plugin_type TEXT NOT NULL,        -- "generic" | "preset_habr" | ...
+  enabled INTEGER DEFAULT 1,        -- 0 = disabled, 1 = enabled
+  created_at INTEGER NOT NULL       -- Unix timestamp (ms)
+);
+```
+
+
+### Таблица: `documents`
+
+Спарсенные документы из RSS.
+
+```sql
+CREATE TABLE documents (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  source_id INTEGER NOT NULL,           -- FK → sources.id
+  url TEXT NOT NULL,                    -- Original URL
+  normalized_url TEXT NOT NULL UNIQUE,  -- Normalized URL (dedup)
+  url_hash TEXT NOT NULL,               -- MD5(normalized_url)
+  title TEXT NOT NULL,
+  text_preview TEXT NOT NULL,           -- First N chars (config)
+  published_at INTEGER,                 -- Unix timestamp (ms)
+  fetched_at INTEGER NOT NULL,          -- Unix timestamp (ms)
+  source_name TEXT NOT NULL,            -- Denormalized for perf
+  FOREIGN KEY (source_id) REFERENCES sources(id)
+);
+
+CREATE INDEX idx_documents_source_id ON documents(source_id);
+CREATE INDEX idx_documents_published_at ON documents(published_at);
+CREATE INDEX idx_documents_normalized_url ON documents(normalized_url);
+```
+
+
+### Таблица: `runs`
+
+История запусков worker.
+
+```sql
+CREATE TABLE runs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  status TEXT NOT NULL,                 -- "pending" | "running" | "done" | "error"
+  started_at INTEGER,                   -- Unix timestamp (ms)
+  completed_at INTEGER,                 -- Unix timestamp (ms)
+  stats TEXT,                           -- JSON: {"docs_fetched": N, ...}
+  error_message TEXT
+);
+```
+
+
+### Таблица: `clusters`
+
+Найденные кластеры документов.
+
+```sql
+CREATE TABLE clusters (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  run_id INTEGER NOT NULL,              -- FK → runs.id
+  title TEXT NOT NULL,                  -- "ai, cost, efficiency"
+  doc_count INTEGER NOT NULL,
+  avg_similarity REAL NOT NULL,
+  created_at INTEGER NOT NULL,          -- Unix timestamp (ms)
+  FOREIGN KEY (run_id) REFERENCES runs(id)
+);
+```
+
+
+### Таблица: `cluster_documents`
+
+Связь кластеров и документов (many-to-many).
+
+```sql
+CREATE TABLE cluster_documents (
+  cluster_id INTEGER NOT NULL,          -- FK → clusters.id
+  document_id INTEGER NOT NULL,         -- FK → documents.id
+  similarity REAL NOT NULL,             -- 0..1
+  PRIMARY KEY (cluster_id, document_id),
+  FOREIGN KEY (cluster_id) REFERENCES clusters(id),
+  FOREIGN KEY (document_id) REFERENCES documents(id)
+);
+```
+
+**Важно:** При JOIN с cluster_documents используются подзапросы вместо LEFT JOIN для избежания дубликатов документов (один документ может быть в нескольких кластерах).
+
+### Таблица: `config`
+
+Конфигурация системы.
+
+```sql
+CREATE TABLE config (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  description TEXT
+);
+```
+
+**Ключи конфигурации:**
+
+- `cluster_threshold` — минимальная схожесть для группировки (0..1, default: 0.22)
+- `min_cluster_size` — минимум документов в кластере (default: 2)
+- `preview_length` — длина text_preview в символах (default: 800)
+- `fetch_timeout_ms` — таймаут HTTP-запросов (default: 15000)
+- `retention_days` — срок хранения старых данных (default: 30)
+
+
+### Таблица: `logs`
+
+Логи worker (дублирование в SQLite + JSONL файлы).
+
+```sql
+CREATE TABLE logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  run_id INTEGER,                       -- NULL для системных логов
+  timestamp INTEGER NOT NULL,           -- Unix timestamp (ms)
+  level TEXT NOT NULL,                  -- "info" | "warn" | "error"
+  component TEXT NOT NULL,              -- "worker" | "fetch" | "cluster"
+  message TEXT NOT NULL,
+  meta TEXT                             -- JSON с доп. данными
+);
+```
+
+
+## Алгоритм кластеризации
+
+### Шаг 1: Токенизация
+
+```typescript
+// src/lib/tokenize.ts
+function tokenize(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^\u0400-\u04FF\w\s]/g, '') // Только кириллица, латиница, цифры
+    .split(/\s+/)
+    .filter(token => token.length >= 2)   // Минимум 2 символа
+    .filter(token => !isStopword(token)); // Удаляем "и", "the", "в"
+}
+```
+
+
+### Шаг 2: TF-IDF векторизация
+
+```typescript
+// src/lib/tfidf.ts
+function computeTFIDF(documents: Document[]) {
+  // TF (term frequency): как часто слово встречается в документе
+  const tf = computeTermFrequency(doc);
+
+  // IDF (inverse document frequency): насколько уникально слово
+  const idf = Math.log(totalDocs / docsContainingTerm);
+
+  // TF-IDF = TF × IDF
+  return tf * idf;
+}
+```
+
+**Результат:** каждый документ → вектор из топ-N самых важных слов с весами.
+
+### Шаг 3: Cosine Similarity
+
+```typescript
+function cosineSimilarity(vecA: Vector, vecB: Vector): number {
+  const dot = sum(vecA[term] * vecB[term]);
+  const normA = sqrt(sum(vecA[term]^2));
+  const normB = sqrt(sum(vecB[term]^2));
+  return dot / (normA * normB); // 0 = разные, 1 = идентичные
+}
+```
+
+
+### Шаг 4: Жадная группировка
+
+```typescript
+// src/lib/clustering.ts
+function greedyCluster(docs: Document[], threshold: number, minSize: number) {
+  // 1. Сортируем документы по длине (DESC)
+  docs.sort((a, b) => b.title.length - a.title.length);
+
+  for (const coreDoc of docs) {
+    const group = [coreDoc];
+
+    // 2. Находим похожие документы
+    for (const candidate of remainingDocs) {
+      if (cosineSimilarity(coreDoc, candidate) >= threshold) {
+        group.push(candidate);
+      }
+    }
+
+    // 3. Если группа >= minSize → создаём кластер
+    if (group.length >= minSize) {
+      clusters.push({
+        title: extractTopTerms(group, 3).join(', '),
+        docs: group
+      });
+    }
+  }
+}
+```
+
+
+## API Endpoints
+
+### Sources (Источники)
+
+#### `GET /api/sources`
+
+Получить список всех источников.
+
+**Response:**
+
+```json
+[
+  {
+    "id": 1,
+    "name": "Habr",
+    "feed_url": "https://habr.com/ru/rss/best/daily/",
+    "plugin_type": "preset_habr",
+    "enabled": 1,
+    "created_at": 1234567890000
+  }
+]
+```
+
+
+#### `POST /api/sources`
+
+Создать новый источник.
+
+**Request:**
+
+```json
+{
+  "name": "Новый источник",
+  "feed_url": "https://example.com/rss",
+  "plugin_type": "generic"
+}
+```
+
+
+#### `DELETE /api/sources/:id`
+
+Удалить источник.
+
+### Runs (Запуски)
+
+#### `GET /api/runs`
+
+Получить список всех запусков.
+
+#### `POST /api/runs/start`
+
+Запустить новый сбор.
+
+#### `GET /api/runs/:id`
+
+Детали конкретного запуска.
+
+### Clusters (Кластеры)
+
+#### `GET /api/clusters?runId=X`
+
+Получить кластеры для конкретного run.
+
+#### `GET /api/clusters/:id`
+
+Детали конкретного кластера.
+
+### Export (Экспорт)
+
+#### `GET /api/export/:runId`
+
+Скачать ZIP-архив с отчётами.
+
+**Содержимое архива:**
+
+- `report.json` — полные данные
+- `raw_documents.jsonl` — все документы построчно
+- `report.md` — Markdown отчёт
+
+
+### Search (Поиск)
+
+#### `GET /api/search?q=query&source=name`
+
+Поиск документов.
+
+**Query params:**
+
+- `q` — поисковый запрос (по title + text_preview)
+- `source` — фильтр по источнику (опционально)
+- `startDate` — от даты (опционально)
+- `endDate` — до даты (опционально)
+
+
+### Logs (Логи)
+
+#### `GET /api/logs?runId=X&level=error`
+
+Получить логи worker.
+
+**Query params:**
+
+- `runId` — ID запуска (опционально)
+- `level` — фильтр по уровню: `info` | `warn` | `error`
+
+
+## UI Components
+
+### Переиспользуемые компоненты (src/components/ui/)
+
+#### Button.tsx
+
+```typescript
+type ButtonProps = {
+  children: React.ReactNode;
+  type?: 'button' | 'submit';
+  variant?: 'primary' | 'secondary' | 'outline';
+  size?: 'sm' | 'md' | 'lg';
+  className?: string;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void | Promise<void>;
+  disabled?: boolean;
+};
+```
+
+**Важно:** Компонент прокидывает все стандартные HTML-события (onClick, disabled).
+
+#### Input.tsx
+
+```typescript
+type InputProps = {
+  name?: string;
+  placeholder?: string;
+  type?: string;
+  className?: string;
+  value?: string;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+};
+```
+
+**Важно:** name опционален, value и onChange прокидываются в <input>.
+
+#### Card.tsx
+
+Обёртка для карточек с единым стилем (bg-zinc-900, border, rounded).
+
+#### Link.tsx
+
+Next.js Link с единым стилем (hover, transition).
+
+#### Badge.tsx
+
+Метки с вариантами: primary, secondary, success, warning, error.
+
+#### Table.tsx
+
+Таблица с адаптивным дизайном и встроенными стилями.
+
+### Бизнес-компоненты (src/components/)
+
+- **StartRunButton** — запуск нового сбора
+- **AddSourceButton** — модальное окно добавления источника
+- **AddPresetsButton** — быстрое добавление preset-источников
+- **SourcesList** — список источников с toggle/delete
+- **RunsTable** — таблица запусков с фильтрацией
+- **ClustersList** — список кластеров с документами
+- **DocumentCard** — карточка документа с метаданными
+- **SearchInput** — поиск с debounce (prop: `placeholder`)
+- **ExportButton** — скачивание ZIP-отчёта
+- **Modal** — универсальное модальное окно
+
+
+## Страницы (src/app/)
+
+### Dashboard (/)
+
+- Список запусков (RunsTable)
+- Кнопка запуска нового сбора
+- Статистика последнего запуска
+
+
+### Sources (/sources)
+
+- SourcesList с управлением
+- AddSourceButton
+- AddPresetsButton
+
+
+### Documents (/documents)
+
+- Пагинация (50 документов на страницу)
+- SQL-запрос с подзапросами для избежания дубликатов при JOIN
+- Сортировка по fetched_at DESC
+- Отображение кластеров для каждого документа
+
+
+### Clusters (/clusters/[id])
+
+- Детали кластера
+- Список документов с similarity
+- Навигация по документам
+
+
+### Runs (/runs/[id])
+
+- Детали запуска
+- Логи в реальном времени
+- Экспорт результатов
+
+
+### Search (/search)
+
+- SearchInput с фильтрами
+- Результаты с подсветкой
+
+
+## Установка и запуск
+
+### Требования
+
+- Node.js 24+
+- npm 10+
+- macOS/Linux (Windows поддерживается, но не тестировалось)
+
+
+### Шаг 1: Клонирование и установка
+
+```bash
+git clone https://github.com/mixamonakh/pain-analyzer.git
+cd pain-analyzer
+npm install
+```
+
+
+### Шаг 2: Инициализация БД
+
+```bash
+npx drizzle-kit push  # Применить схему
+npm run seed          # Заполнить начальные данные
+```
+
+
+### Шаг 3: Запуск worker (первый сбор)
+
+```bash
+npm run worker
+```
+
+
+### Шаг 4: Запуск веб-интерфейса
+
+```bash
+npm run dev
+```
+
+Откройте http://localhost:3000
+
+## Конфигурация
+
+### Изменение настроек кластеризации
+
+```bash
+sqlite3 pain-analyzer.db "UPDATE config SET value='0.18' WHERE key='cluster_threshold'"
+sqlite3 pain-analyzer.db "UPDATE config SET value='3' WHERE key='min_cluster_size'"
+```
+
+
+### Параметры кластеризации
+
+**cluster_threshold** (0..1, default 0.22)
+
+- Выше = меньше кластеров, но более качественных
+- Ниже = больше кластеров, но менее связанных
+- Рекомендуемый диапазон: 0.18-0.35
+
+**min_cluster_size** (default 2)
+
+- Минимум документов для формирования кластера
+
+**preview_length** (default 800)
+
+- Длина text_preview для парсинга
+- Больше = точнее кластеризация, но медленнее
+
+
+### Добавление нового RSS-источника
+
+#### Через UI
+
+1. Откройте `/sources`
+2. Нажмите "Добавить источник"
+3. Введите название и URL RSS-ленты
+
+#### Через API
+
+```bash
+curl -X POST http://localhost:3000/api/sources \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "The Verge",
+    "feed_url": "https://www.theverge.com/rss/index.xml",
+    "plugin_type": "generic"
+  }'
+```
+
+
+## Workflow типичного использования
+
+### 1. Ежедневный сбор (автоматизация)
+
+```bash
+# Добавить в crontab (macOS/Linux)
+0 9,14,20 * * * cd /path/to/pain-analyzer && npm run worker >> /var/log/pain-analyzer.log 2>&1
+```
+
+
+### 2. Просмотр результатов
+
+1. Откройте http://localhost:3000
+2. Выберите последний Run
+3. Изучите найденные кластеры
+4. Скачайте ZIP-отчёт при необходимости
+
+### 3. Тонкая настройка
+
+Если кластеры некачественные:
+
+- Увеличьте `cluster_threshold` (меньше кластеров, но точнее)
+- Увеличьте `min_cluster_size` (только крупные темы)
+- Добавьте стоп-слова (см. `src/lib/tokenize.ts`)
+
+
+## Известные проблемы и решения
+
+### Дубликаты документов при JOIN
+
+**Проблема:** Документ может быть в нескольких кластерах → LEFT JOIN возвращает дубликаты.
+
+**Решение:** Использовать подзапросы вместо JOIN:
+
+```sql
+SELECT
+  d.id,
+  (SELECT c.id FROM cluster_documents cd
+   JOIN clusters c ON c.id = cd.cluster_id
+   WHERE cd.document_id = d.id LIMIT 1) AS cluster_id
+FROM documents d
+```
+
+
+### TypeScript ошибки в компонентах
+
+**Проблема:** UI компоненты не принимают стандартные HTML атрибуты (onClick, value, onChange).
+
+**Решение:** Явно прописывать типы пропсов и прокидывать их в нативные элементы.
+
+## Архитектурные принципы
+
+1. **Простота** — SQLite вместо Postgres, универсальный парсер
+2. **Модульность** — lib функции независимы, легко тестировать
+3. **Расширяемость** — plugin_type готов для кастомных парсеров
+4. **Логирование** — все действия worker пишутся в logs
+5. **Типобезопасность** — TypeScript strict mode + явные типы
+
+## Roadmap
+
+### ✅ Реализовано
+
+- RSS парсинг с retry и прокси
+- SQLite + Drizzle ORM
+- TF-IDF кластеризация
+- Next.js UI (dashboard, sources, clusters, documents)
+- Экспорт в JSON/JSONL/MD/ZIP
+- Логирование (pino + SQLite + JSONL)
+- Дедупликация URL
+- API Routes для управления
+- Пагинация документов с корректным JOIN
+
+
+### 🚧 В разработке
+
+- Админка для config (UI вместо SQL)
+- Full-text search (SQLite FTS5)
+- Расширенные стоп-слова
+- Автозапуск worker (launchd/systemd)
+- Telegram уведомления
+- GPT-генерация названий кластеров
+
+
+### 🔮 Планируется
+
+- Plugin system (расширяемые парсеры)
+- Normalization layer (единый формат документов)
+- Processing pipeline (job queue)
+- Analytics dashboard (тренды, метрики)
+- Webhook integrations
+- AI-ассистент в UI
+- Docker + CI/CD
+
+
+## Вклад в проект
+
+### Стиль кода
+
+- TypeScript strict mode
+- ESLint + Prettier
+- Функциональный подход (pure functions)
+- Комментарии на русском в сложных местах
+- Нет когнитивно-искаженных слов и фраз
+
+
+### Как добавить новую фичу
+
+1. Создайте issue в GitHub
+2. Форкните репозиторий
+3. Создайте ветку `feature/название`
+4. Напишите код + тесты
+5. Сделайте PR с описанием изменений
+
+## Лицензия
+
+MIT
+
+## Автор
+
+**Миша (mixamonakh)**
+Frontend Developer, Moscow
+GitHub: https://github.com/mixamonakh
+
+```
