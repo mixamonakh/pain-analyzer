@@ -54,18 +54,22 @@ export default function AddSourceButton() {
             <div>
               <label className="block text-sm font-semibold mb-2">Название</label>
               <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Например: My Blog"
-              />
+  name="source-name"
+  value={name}
+  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+  placeholder="Название источника (например, РБК)"
+/>
+
             </div>
             <div>
               <label className="block text-sm font-semibold mb-2">RSS URL</label>
               <Input
-                value={feedUrl}
-                onChange={(e) => setFeedUrl(e.target.value)}
-                placeholder="https://example.com/feed.xml"
-              />
+  name="source-url"
+  value={feedUrl}
+  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFeedUrl(e.target.value)}
+  placeholder="URL RSS/Atom фида"
+/>
+
             </div>
             <div className="flex gap-2 justify-end">
               <Button variant="secondary" onClick={() => setIsOpen(false)}>

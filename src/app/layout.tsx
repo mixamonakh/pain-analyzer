@@ -2,6 +2,7 @@ export const runtime = 'nodejs';
 
 import type { Metadata } from 'next';
 import './globals.css';
+import UiLink from '@/components/ui/Link';
 
 export const metadata: Metadata = {
   title: 'Pain Analyzer',
@@ -16,22 +17,19 @@ export default function RootLayout({
   return (
     <html lang="ru" className="dark">
       <body>
-        <nav className="bg-zinc-900 border-b border-zinc-800">
-          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center gap-8">
-            <a href="/" className="text-xl font-bold">
-              Pain Analyzer
-            </a>
-            <div className="flex gap-4 text-sm">
-              <a href="/sources" className="hover:text-blue-400">
-                Источники
-              </a>
-              <a href="/search" className="hover:text-blue-400">
-                Поиск
-              </a>
-            </div>
+        <header className="border-b border-zinc-800 bg-zinc-950">
+          <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="font-semibold">pain-analyzer</div>
+            <nav className="flex gap-4 text-sm">
+              <UiLink href="/">Dashboard</UiLink>
+              <UiLink href="/sources">Источники</UiLink>
+              <UiLink href="/documents">Документы</UiLink>
+              <UiLink href="/search">Поиск</UiLink>
+            </nav>
           </div>
-        </nav>
-        <main className="max-w-7xl mx-auto px-4 py-8">
+        </header>
+
+        <main className="max-w-6xl mx-auto px-4 py-8">
           {children}
         </main>
       </body>

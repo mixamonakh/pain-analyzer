@@ -5,9 +5,10 @@ import Input from './ui/Input';
 
 interface SearchInputProps {
   onSearch: (query: string) => void;
+  placeholder?: string;
 }
 
-export default function SearchInput({ onSearch }: SearchInputProps) {
+export default function SearchInput({ onSearch, placeholder = 'Поиск...' }: SearchInputProps) {
   const [query, setQuery] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -19,10 +20,11 @@ export default function SearchInput({ onSearch }: SearchInputProps) {
   return (
     <div className="flex gap-2">
       <Input
+        name="search"
         value={query}
         onChange={handleChange}
-        placeholder="Поиск: AI, нейросети, генерация..."
-        className="text-lg py-3"
+        placeholder={placeholder}
+        className="pl-10"
       />
     </div>
   );
