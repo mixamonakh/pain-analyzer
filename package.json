@@ -1,0 +1,46 @@
+{
+  "name": "pain-analyzer",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "db:generate": "tsx node_modules/drizzle-kit/bin.cjs generate --config=./drizzle.config.ts",
+    "db:migrate": "tsx node_modules/drizzle-kit/bin.cjs migrate --config=./drizzle.config.ts",
+    "db:seed": "tsx src/db/seed.ts",
+    "worker": "tsx src/worker/index.ts",
+    "maintenance": "tsx src/scripts/maintenance.ts"
+  },
+  "dependencies": {
+    "archiver": "^7.0.0",
+    "autoprefixer": "^10.4.0",
+    "axios": "^1.7.0",
+    "better-sqlite3": "^11.0.0",
+    "drizzle-orm": "^0.36.0",
+    "http-proxy-agent": "^7.0.0",
+    "https-proxy-agent": "^7.0.0",
+    "natural": "^8.0.1",
+    "next": "^15.1.0",
+    "pino": "^9.5.0",
+    "postcss": "^8.4.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "rss-parser": "^3.13.0",
+    "stopword": "^3.1.0",
+    "striptags": "^3.2.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.7.0"
+  },
+  "devDependencies": {
+    "@types/archiver": "^7.0.0",
+    "@types/better-sqlite3": "^7.6.8",
+    "@types/natural": "^6.0.1",
+    "@types/node": "^20.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/stopword": "^2.0.3",
+    "drizzle-kit": "^0.30.5",
+    "tsx": "^4.19.0"
+  }
+}

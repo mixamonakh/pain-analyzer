@@ -1,0 +1,22 @@
+{
+  "entry": [
+    "src/app/**/*.tsx",
+    "src/app/**/*.ts",
+    "src/worker/index.ts",
+    "src/db/seed.ts",
+    "src/scripts/maintenance.ts"
+  ],
+  "extensions": [".ts", ".tsx"],
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/.next/**",
+    "**/drizzle/**"
+  ],
+  "ignoreUnimported": [
+    "tailwindcss",
+    "autoprefixer",
+    "typescript",
+    "postcss"
+  ],
+  "ignoreUnresolved": []
+}
