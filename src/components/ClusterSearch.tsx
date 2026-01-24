@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface ClusterSearchProps {
   onSearch: (query: string) => void;
@@ -8,12 +8,31 @@ interface ClusterSearchProps {
 
 export default function ClusterSearch({ onSearch }: ClusterSearchProps) {
   const [query, setQuery] = useState('');
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setQuery(value);
-    onSearch(value);
+
+    // Clear previous timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Set new timer
+    debounceTimerRef.current = setTimeout(() => {
+      onSearch(value);
+    }, 300);
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="mb-6">

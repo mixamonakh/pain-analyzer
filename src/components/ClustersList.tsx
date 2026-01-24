@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 
 interface Cluster {
@@ -18,39 +18,32 @@ export default function ClustersList({
   searchQuery?: string;
 }) {
   const [clusters, setClusters] = useState<Cluster[]>([]);
-  const [filteredClusters, setFilteredClusters] = useState<Cluster[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch(`/api/clusters?runId=${runId}`)
       .then(res => res.json())
       .then(data => {
-        // Проверка: если data — массив, используем его; если нет — пустой массив
         const clustersArray = Array.isArray(data) ? data : [];
         setClusters(clustersArray);
-        setFilteredClusters(clustersArray);
         setLoading(false);
       })
       .catch(err => {
         console.error('Failed to fetch clusters:', err);
         setClusters([]);
-        setFilteredClusters([]);
         setLoading(false);
       });
   }, [runId]);
 
-  useEffect(() => {
+  const filteredClusters = useMemo(() => {
     if (!searchQuery.trim()) {
-      setFilteredClusters(clusters);
-      return;
+      return clusters;
     }
 
     const lowerQuery = searchQuery.toLowerCase();
-    const filtered = clusters.filter(c =>
+    return clusters.filter(c =>
       c.title.toLowerCase().includes(lowerQuery)
     );
-
-    setFilteredClusters(filtered);
   }, [searchQuery, clusters]);
 
   if (loading) {

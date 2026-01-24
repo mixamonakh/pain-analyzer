@@ -7,24 +7,55 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
 
-    const page = parseInt(searchParams.get('page') || '1');
-    const perPage = parseInt(searchParams.get('perPage') || '50');
+    // Валидация page и perPage
+    const pageRaw = parseInt(searchParams.get('page') || '1');
+    const perPageRaw = parseInt(searchParams.get('perPage') || '50');
+
+    const page = Math.max(1, isNaN(pageRaw) ? 1 : pageRaw);
+    const perPage = Math.min(100, Math.max(1, isNaN(perPageRaw) ? 50 : perPageRaw));
+
     const source = searchParams.get('source');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
+    // Валидация дат
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        return NextResponse.json(
+          { error: 'Invalid date format' },
+          { status: 400 }
+        );
+      }
+
+      if (start > end) {
+        return NextResponse.json(
+          { error: 'startDate must be before or equal to endDate' },
+          { status: 400 }
+        );
+      }
+    }
+
     let whereConditions: string[] = [];
     let params: any[] = [];
 
+    // Валидация source
     if (source) {
-      const sourceName = sqlite
-        .prepare('SELECT name FROM sources WHERE name = ?')
-        .get(source) as any;
+      const sourceExists = sqlite
+        .prepare('SELECT 1 FROM sources WHERE name = ?')
+        .get(source);
 
-      if (sourceName) {
-        whereConditions.push('source_id = (SELECT id FROM sources WHERE name = ?)');
-        params.push(source);
+      if (!sourceExists) {
+        return NextResponse.json(
+          { error: `Source "${source}" not found` },
+          { status: 400 }
+        );
       }
+
+      whereConditions.push('source_id = (SELECT id FROM sources WHERE name = ?)');
+      params.push(source);
     }
 
     if (startDate) {

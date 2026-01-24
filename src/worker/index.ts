@@ -180,12 +180,12 @@ async function fetchAndIndexDocuments(
             .slice(0, config.preview_length);
 
           let publishedAt: number | null = null;
-const dateStr = item.isoDate || item.pubDate;
-if (dateStr) {
-  const d = new Date(dateStr);
-  const ts = d.getTime();
-  publishedAt = Number.isFinite(ts) ? ts : null;
-}
+          const dateStr = item.isoDate || item.pubDate;
+          if (dateStr) {
+            const d = new Date(dateStr);
+            const ts = d.getTime();
+            publishedAt = Number.isFinite(ts) ? ts : null;
+          }
 
           const fetchedAt = Date.now();
           const normalizedTitle = title.toLowerCase().trim();
@@ -247,9 +247,11 @@ if (dateStr) {
       });
     }
   }
-if (totalFetched === 0) {
-  throw new Error('Failed to fetch from all sources');
-}
+
+  if (totalFetched === 0) {
+    throw new Error('Failed to fetch from all sources');
+  }
+
   return { fetched: totalFetched, newDocs: totalNew, updated: totalUpdated };
 }
 
@@ -399,20 +401,20 @@ async function runWorker(): Promise<void> {
       const { clustersCreated, singles } = await performAndSaveClustering(runId, config);
 
       const duration = Date.now() - startTime;
-const processedSources = await db.query.sources.findMany({
-  where: eq(sources.enabled, 1),
-});
+      const processedSources = await db.query.sources.findMany({
+        where: eq(sources.enabled, 1),
+      });
 
-const stats: ExportStats = {
-  sources_processed: processedSources.length,  // ← добавь .length
-  docs_fetched: fetched,
-  docs_new: newDocs,
-  docs_updated: updated,
-  clusters_created: clustersCreated,
-  singles: singles,  // ← убери .length (singles уже число)
-  duration_ms: duration,
-  warning: clustersCreated === 0 && fetched > 0 ? 'insufficient_data' : null,
-};
+      const stats: ExportStats = {
+        sources_processed: processedSources.length,
+        docs_fetched: fetched,
+        docs_new: newDocs,
+        docs_updated: updated,
+        clusters_created: clustersCreated,
+        singles: singles,
+        duration_ms: duration,
+        warning: clustersCreated === 0 && fetched > 0 ? 'insufficient_data' : null,
+      };
 
       exportRunData(runId);
 

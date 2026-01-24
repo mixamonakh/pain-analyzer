@@ -16,8 +16,16 @@ export default function DocumentFilters({ onFilter, sources }: DocumentFiltersPr
   const [source, setSource] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [dateError, setDateError] = useState('');
 
   const handleApply = () => {
+    // Валидация дат на клиенте
+    if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+      setDateError('Начальная дата должна быть раньше конечной');
+      return;
+    }
+
+    setDateError('');
     onFilter({
       source: source || undefined,
       startDate: startDate || undefined,
@@ -29,6 +37,7 @@ export default function DocumentFilters({ onFilter, sources }: DocumentFiltersPr
     setSource('');
     setStartDate('');
     setEndDate('');
+    setDateError('');
     onFilter({});
   };
 
@@ -56,7 +65,10 @@ export default function DocumentFilters({ onFilter, sources }: DocumentFiltersPr
           <input
             type="date"
             value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
+            onChange={(e) => {
+              setStartDate(e.target.value);
+              setDateError('');
+            }}
             className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-zinc-100 focus:outline-none focus:border-blue-500"
           />
         </div>
@@ -66,11 +78,20 @@ export default function DocumentFilters({ onFilter, sources }: DocumentFiltersPr
           <input
             type="date"
             value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
+            onChange={(e) => {
+              setEndDate(e.target.value);
+              setDateError('');
+            }}
             className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-zinc-100 focus:outline-none focus:border-blue-500"
           />
         </div>
       </div>
+
+      {dateError && (
+        <div className="text-red-400 text-sm">
+          {dateError}
+        </div>
+      )}
 
       <div className="flex gap-2">
         <Button onClick={handleApply} variant="primary">

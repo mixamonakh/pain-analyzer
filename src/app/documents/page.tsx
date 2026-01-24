@@ -20,6 +20,7 @@ export default function DocumentsPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [sources, setSources] = useState<string[]>([]);
   const [filters, setFilters] = useState<{
     source?: string;
@@ -49,6 +50,8 @@ export default function DocumentsPage() {
 
   const fetchDocuments = async () => {
     setLoading(true);
+    setError('');
+
     try {
       const params = new URLSearchParams({
         page: page.toString(),
@@ -59,11 +62,19 @@ export default function DocumentsPage() {
       });
 
       const res = await fetch(`/api/documents?${params}`);
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to fetch documents');
+      }
+
       const data = await res.json();
 
       setDocuments(data.documents);
       setTotal(data.total);
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to fetch documents';
+      setError(errorMsg);
       console.error('Failed to fetch documents:', error);
     } finally {
       setLoading(false);
@@ -87,6 +98,12 @@ export default function DocumentsPage() {
       </div>
 
       <DocumentFilters onFilter={handleFilter} sources={sources} />
+
+      {error && (
+        <div className="bg-red-900/30 border border-red-700 rounded p-4 text-red-300">
+          {error}
+        </div>
+      )}
 
       {loading ? (
         <div className="text-center text-zinc-400 py-12">Загрузка...</div>
