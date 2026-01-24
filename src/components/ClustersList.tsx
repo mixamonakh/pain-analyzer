@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 interface Cluster {
@@ -10,47 +10,85 @@ interface Cluster {
   avg_similarity: number;
 }
 
-interface ClustersListProps {
+export default function ClustersList({
+  runId,
+  searchQuery = ''
+}: {
   runId: number;
-}
-
-export default function ClustersList({ runId }: ClustersListProps) {
+  searchQuery?: string;
+}) {
   const [clusters, setClusters] = useState<Cluster[]>([]);
+  const [filteredClusters, setFilteredClusters] = useState<Cluster[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchClusters = async () => {
-      try {
-        const res = await fetch(`/api/clusters?runId=${runId}`);
-        const data = await res.json();
-        setClusters(data.clusters || []);
-      } catch (err) {
-        console.error('Error fetching clusters:', err);
-      } finally {
+    fetch(`/api/clusters?runId=${runId}`)
+      .then(res => res.json())
+      .then(data => {
+        // Проверка: если data — массив, используем его; если нет — пустой массив
+        const clustersArray = Array.isArray(data) ? data : [];
+        setClusters(clustersArray);
+        setFilteredClusters(clustersArray);
         setLoading(false);
-      }
-    };
+      })
+      .catch(err => {
+        console.error('Failed to fetch clusters:', err);
+        setClusters([]);
+        setFilteredClusters([]);
+        setLoading(false);
+      });
+  }, [runId]);
 
-    fetchClusters();
-  }, [runId]); // Зависимость только runId, не функция
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredClusters(clusters);
+      return;
+    }
+
+    const lowerQuery = searchQuery.toLowerCase();
+    const filtered = clusters.filter(c =>
+      c.title.toLowerCase().includes(lowerQuery)
+    );
+
+    setFilteredClusters(filtered);
+  }, [searchQuery, clusters]);
 
   if (loading) {
-    return <div>Загрузка кластеров...</div>;
+    return <div className="text-zinc-400">Загрузка кластеров...</div>;
   }
 
-  if (clusters.length === 0) {
-    return <div className="text-zinc-400">Кластеры не найдены. Попробуйте снизить порог кластеризации в настройках.</div>;
+  if (filteredClusters.length === 0) {
+    return (
+      <div className="text-zinc-400">
+        {searchQuery ? 'Кластеры не найдены' : 'Нет кластеров'}
+      </div>
+    );
   }
 
   return (
     <div className="space-y-4">
-      {clusters.map((cluster) => (
-        <Link key={cluster.id} href={`/clusters/${cluster.id}`}>
-          <div className="bg-zinc-900 border border-zinc-800 rounded p-4 hover:border-zinc-700 transition">
-            <h3 className="font-semibold text-lg">{cluster.title}</h3>
-            <div className="text-sm text-zinc-400 mt-2">
-              {cluster.mentions_count} документов · сходство {cluster.avg_similarity.toFixed(2)}
+      {searchQuery && (
+        <div className="text-sm text-zinc-500">
+          Найдено кластеров: {filteredClusters.length}
+        </div>
+      )}
+
+      {filteredClusters.map(cluster => (
+        <Link
+          key={cluster.id}
+          href={`/clusters/${cluster.id}`}
+          className="block bg-zinc-900 border border-zinc-800 rounded-lg p-4 hover:border-zinc-700 transition"
+        >
+          <div className="flex justify-between items-start">
+            <h3 className="text-lg font-semibold text-blue-400">
+              {cluster.title}
+            </h3>
+            <div className="text-sm text-zinc-500">
+              {cluster.mentions_count} документов
             </div>
+          </div>
+          <div className="text-sm text-zinc-500 mt-2">
+            Средняя схожесть: {(cluster.avg_similarity * 100).toFixed(1)}%
           </div>
         </Link>
       ))}

@@ -247,7 +247,9 @@ if (dateStr) {
       });
     }
   }
-
+if (totalFetched === 0) {
+  throw new Error('Failed to fetch from all sources');
+}
   return { fetched: totalFetched, newDocs: totalNew, updated: totalUpdated };
 }
 

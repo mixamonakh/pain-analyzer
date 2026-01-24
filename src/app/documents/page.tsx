@@ -1,178 +1,127 @@
-export const runtime = 'nodejs';
+'use client';
 
-import { sqlite } from '@/db';
-import Card from '@/components/ui/Card';
-import UiLink from '@/components/ui/Link';
-import Badge from '@/components/ui/Badge';
+import { useState, useEffect } from 'react';
+import DocumentCard from '@/components/DocumentCard';
+import DocumentFilters from '@/components/DocumentFilters';
+import Button from '@/components/ui/Button';
 
-type Document = {
+interface Document {
   id: number;
   url: string;
   title: string;
   text_preview: string;
-  published_at: number | null;
   fetched_at: number;
   source_name: string;
-  cluster_id: number | null;
-  cluster_title: string | null;
-};
+  published_at: number | null;
+}
 
-type PageProps = {
-  searchParams: Promise<{ page?: string }>;
-};
+export default function DocumentsPage() {
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [sources, setSources] = useState<string[]>([]);
+  const [filters, setFilters] = useState<{
+    source?: string;
+    startDate?: string;
+    endDate?: string;
+  }>({});
 
-export default async function DocumentsPage({ searchParams }: PageProps) {
-  const params = await searchParams;
-  const currentPage = Number(params.page || '1');
-  const limit = 50;
-  const offset = (currentPage - 1) * limit;
+  const perPage = 50;
 
-  const docs = sqlite.prepare(`
-  SELECT
-    d.id,
-    d.url,
-    d.title,
-    d.text_preview,
-    d.published_at,
-    d.fetched_at,
-    s.name AS source_name,
-    (
-      SELECT c.id
-      FROM cluster_documents cd
-      JOIN clusters c ON c.id = cd.cluster_id
-      WHERE cd.document_id = d.id
-      LIMIT 1
-    ) AS cluster_id,
-    (
-      SELECT c.title
-      FROM cluster_documents cd
-      JOIN clusters c ON c.id = cd.cluster_id
-      WHERE cd.document_id = d.id
-      LIMIT 1
-    ) AS cluster_title
-  FROM documents d
-  JOIN sources s ON s.id = d.source_id
-  ORDER BY d.fetched_at DESC
-  LIMIT ? OFFSET ?
-`).all(limit, offset) as Document[];
+  useEffect(() => {
+    fetchSources();
+  }, []);
 
+  useEffect(() => {
+    fetchDocuments();
+  }, [page, filters]);
 
-  const totalRow = sqlite.prepare(`SELECT COUNT(*) AS cnt FROM documents`).get() as any;
-  const total = totalRow.cnt;
-  const totalPages = Math.ceil(total / limit);
+  const fetchSources = async () => {
+    try {
+      const res = await fetch('/api/sources');
+      const data = await res.json();
+      setSources(data.map((s: any) => s.name));
+    } catch (error) {
+      console.error('Failed to fetch sources:', error);
+    }
+  };
+
+  const fetchDocuments = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        perPage: perPage.toString(),
+        ...(filters.source && { source: filters.source }),
+        ...(filters.startDate && { startDate: filters.startDate }),
+        ...(filters.endDate && { endDate: filters.endDate })
+      });
+
+      const res = await fetch(`/api/documents?${params}`);
+      const data = await res.json();
+
+      setDocuments(data.documents);
+      setTotal(data.total);
+    } catch (error) {
+      console.error('Failed to fetch documents:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFilter = (newFilters: typeof filters) => {
+    setFilters(newFilters);
+    setPage(1);
+  };
+
+  const totalPages = Math.ceil(total / perPage);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1>Документы</h1>
-        <p className="text-zinc-400 mt-2">
-          Всего документов: {total}
-        </p>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-zinc-100">Документы</h1>
+        <div className="text-zinc-400">
+          Всего: {total}
+        </div>
       </div>
 
-      {/* Пагинация сверху */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-zinc-400">
-            Страница {currentPage} из {totalPages}
+      <DocumentFilters onFilter={handleFilter} sources={sources} />
+
+      {loading ? (
+        <div className="text-center text-zinc-400 py-12">Загрузка...</div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {documents.map(doc => (
+              <DocumentCard key={doc.id} doc={doc} />
+            ))}
           </div>
-          <div className="flex gap-2">
-            {currentPage > 1 && (
-              <UiLink href={`/documents?page=${currentPage - 1}`}>
-                <button className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 rounded text-sm">
-                  ← Назад
-                </button>
-              </UiLink>
-            )}
-            {currentPage < totalPages && (
-              <UiLink href={`/documents?page=${currentPage + 1}`}>
-                <button className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 rounded text-sm">
-                  Вперёд →
-                </button>
-              </UiLink>
-            )}
-          </div>
-        </div>
-      )}
 
-      {/* Список документов */}
-      <div className="space-y-4">
-        {docs.map((doc) => (
-          <Card key={doc.id}>
-            <div className="space-y-3">
-              {/* Заголовок */}
-              <div>
-                <a
-                  href={doc.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-lg font-semibold text-blue-400 hover:text-blue-300"
-                >
-                  📄 {doc.title}
-                </a>
-              </div>
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center gap-2">
+              <Button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                variant="outline"
+              >
+                ← Назад
+              </Button>
 
-              {/* Метаданные */}
-              <div className="flex items-center gap-4 text-sm text-zinc-400">
-                <span>{doc.source_name}</span>
-                <span>•</span>
-                <span>
-                  {doc.published_at
-                    ? new Date(doc.published_at).toLocaleDateString('ru-RU')
-                    : new Date(doc.fetched_at).toLocaleDateString('ru-RU')}
-                </span>
-                <span>•</span>
-                <span>
-                  {new Date(doc.fetched_at).toLocaleTimeString('ru-RU', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </span>
-              </div>
+              <span className="text-zinc-400 px-4">
+                Страница {page} из {totalPages}
+              </span>
 
-              {/* Preview текста */}
-              <p className="text-zinc-300 text-sm leading-relaxed">
-                {doc.text_preview.slice(0, 300)}
-                {doc.text_preview.length > 300 ? '...' : ''}
-              </p>
-
-              {/* Кластер */}
-              {doc.cluster_id && doc.cluster_title && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-zinc-500">🏷️ Кластер:</span>
-                  <UiLink href={`/clusters/${doc.cluster_id}`}>
-                    <Badge variant="primary">{doc.cluster_title}</Badge>
-                  </UiLink>
-                </div>
-              )}
+              <Button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                variant="outline"
+              >
+                Вперёд →
+              </Button>
             </div>
-          </Card>
-        ))}
-      </div>
-
-      {/* Пагинация снизу */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-zinc-400">
-            Страница {currentPage} из {totalPages}
-          </div>
-          <div className="flex gap-2">
-            {currentPage > 1 && (
-              <UiLink href={`/documents?page=${currentPage - 1}`}>
-                <button className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 rounded text-sm">
-                  ← Назад
-                </button>
-              </UiLink>
-            )}
-            {currentPage < totalPages && (
-              <UiLink href={`/documents?page=${currentPage + 1}`}>
-                <button className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 rounded text-sm">
-                  Вперёд →
-                </button>
-              </UiLink>
-            )}
-          </div>
-        </div>
+          )}
+        </>
       )}
     </div>
   );

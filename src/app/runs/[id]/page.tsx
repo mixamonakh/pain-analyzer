@@ -5,7 +5,7 @@ import { runs } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import Link from 'next/link';
 import ExportButton from '@/components/ExportButton';
-import ClustersList from '@/components/ClustersList';
+import ClustersListWithSearch from '@/components/ClustersListWithSearch';
 
 export default async function RunDetailsPage({
   params,
@@ -77,7 +77,7 @@ export default async function RunDetailsPage({
 
       <div className="mt-8">
         <h2 className="text-2xl font-semibold mb-4">Кластеры</h2>
-        <ClustersList runId={runId} />
+        <ClustersListWithSearch runId={runId} />
       </div>
     </div>
   );

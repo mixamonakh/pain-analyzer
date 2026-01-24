@@ -10,6 +10,7 @@
     "db:migrate": "tsx node_modules/drizzle-kit/bin.cjs migrate --config=./drizzle.config.ts",
     "db:seed": "tsx src/db/seed.ts",
     "worker": "tsx src/worker/index.ts",
+    "scheduler": "tsx src/scripts/scheduler.ts",
     "maintenance": "tsx src/scripts/maintenance.ts"
   },
   "dependencies": {
@@ -22,6 +23,7 @@
     "https-proxy-agent": "^7.0.0",
     "natural": "^8.0.1",
     "next": "^15.1.0",
+    "node-cron": "^3.0.3",
     "pino": "^9.5.0",
     "postcss": "^8.4.0",
     "react": "^19.0.0",
@@ -37,6 +39,7 @@
     "@types/better-sqlite3": "^7.6.8",
     "@types/natural": "^6.0.1",
     "@types/node": "^20.10.0",
+    "@types/node-cron": "^3.0.11",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/stopword": "^2.0.3",
