@@ -11,8 +11,8 @@ export default async function SourcesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Источники RSS</h1>
-        <p className="text-zinc-400">Управление источниками данных</p>
+        <h1 className="text-3xl font-bold mb-2">Источники данных</h1>
+        <p className="text-zinc-400">Управление RSS-фидами и Telegram-каналами</p>
       </div>
 
       <div className="flex gap-4">

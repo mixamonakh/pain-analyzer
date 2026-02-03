@@ -1,6 +1,7 @@
 // src/lib/connectors/index.ts
 import type { ConnectorConfig, FetchResult, ConnectorType } from './types';
 import { RssConnector } from './rssConnector';
+import { TelegramPublicConnector } from './telegramPublicConnector';
 
 export interface IConnector {
   readonly type: ConnectorType;
@@ -18,12 +19,7 @@ export interface IConnector {
  */
 const connectorsRegistry: Record<ConnectorType, IConnector> = {
   rss: new RssConnector(),
-  telegram: {
-    type: 'telegram',
-    async fetch(): Promise<FetchResult> {
-      throw new Error('Telegram connector not implemented yet');
-    },
-  },
+  telegram: new TelegramPublicConnector(),
   html: {
     type: 'html',
     async fetch(): Promise<FetchResult> {
