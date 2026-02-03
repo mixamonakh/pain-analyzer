@@ -4,6 +4,7 @@ import { db } from '@/db';
 import SourcesList from '@/components/SourcesList';
 import AddSourceButton from '@/components/AddSourceButton';
 import AddPresetsButton from '@/components/AddPresetsButton';
+import AddBulkSourcesButton from '@/components/AddBulkSourcesButton';
 
 export default async function SourcesPage() {
   const sources = await db.query.sources.findMany();
@@ -16,6 +17,7 @@ export default async function SourcesPage() {
       </div>
 
       <div className="flex gap-4">
+        <AddBulkSourcesButton />
         <AddPresetsButton />
         <AddSourceButton />
       </div>
