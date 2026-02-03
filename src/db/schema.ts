@@ -2,7 +2,7 @@
 import { relations } from 'drizzle-orm';
 import { sources, runs, documents, clusters, cluster_documents, logs, config } from './tables';
 
-export { sources, runs, documents, clusters, cluster_documents, logs, config };
+export * from './tables';
 
 export const sourcesRelations = relations(sources, ({ many }) => ({
   documents: many(documents),

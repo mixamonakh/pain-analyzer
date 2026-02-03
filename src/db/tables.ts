@@ -1,18 +1,18 @@
-// File: src/db/tables.ts
+// src/db/tables.ts
 import { sqliteTable, integer, text, real, primaryKey } from 'drizzle-orm/sqlite-core';
 
 export const sources = sqliteTable('sources', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
   feed_url: text('feed_url').notNull(),
-  plugin_type: text('plugin_type').notNull(),
+  plugin_type: text('plugin_type').notNull(), // 'rss' | 'telegram' | 'html'
   enabled: integer('enabled').notNull().default(1),
   created_at: integer('created_at').notNull(),
 });
 
 export const runs = sqliteTable('runs', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  status: text('status').notNull(),
+  status: text('status').notNull(), // 'pending' | 'running' | 'done' | 'error'
   started_at: integer('started_at'),
   finished_at: integer('finished_at'),
   stats_json: text('stats_json'),
@@ -30,6 +30,32 @@ export const documents = sqliteTable('documents', {
   published_at: integer('published_at'),
   fetched_at: integer('fetched_at').notNull(),
   content_hash: text('content_hash').notNull(),
+  excluded: integer('excluded').notNull().default(0), // NEW: 0 = active, 1 = filtered out
+});
+
+// NEW TABLE: Сырой контент без потерь
+export const raw_items = sqliteTable('raw_items', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  document_id: integer('document_id').notNull().references(() => documents.id),
+  content_type: text('content_type').notNull(), // 'html' | 'json' | 'text'
+  content_body: text('content_body').notNull(), // Полный контент как пришёл
+  media_json: text('media_json'), // Метаданные медиафайлов (URL, размеры и т.п.)
+  fetched_at: integer('fetched_at').notNull(),
+});
+
+// NEW TABLE: Сохранённые пайплайны обработки
+export const pipelines = sqliteTable('pipelines', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  operations_json: text('operations_json').notNull(), // [{"type":"dedup_url"}, ...]
+  created_at: integer('created_at').notNull(),
+});
+
+// NEW TABLE: Credentials для коннекторов (Telegram session и т.п.)
+export const connector_credentials = sqliteTable('connector_credentials', {
+  source_id: integer('source_id').primaryKey().references(() => sources.id),
+  credentials_json: text('credentials_json').notNull(), // Зашифрованные данные
+  updated_at: integer('updated_at').notNull(),
 });
 
 export const clusters = sqliteTable('clusters', {
@@ -56,8 +82,8 @@ export const cluster_documents = sqliteTable(
 export const logs = sqliteTable('logs', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   run_id: integer('run_id').references(() => runs.id),
-  level: text('level').notNull(),
-  component: text('component').notNull(),
+  level: text('level').notNull(), // 'info' | 'warn' | 'error'
+  component: text('component').notNull(), // 'worker' | 'fetch' | 'cluster'
   message: text('message').notNull(),
   meta_json: text('meta_json'),
   created_at: integer('created_at').notNull(),
