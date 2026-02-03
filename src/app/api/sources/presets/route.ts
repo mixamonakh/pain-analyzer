@@ -7,10 +7,11 @@ import { sources } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
 const PRESETS = [
-  { name: 'Habr', feed_url: 'https://habr.com/ru/rss/best/daily/', plugin_type: 'preset_habr' },
-  { name: 'VC.ru', feed_url: 'https://vc.ru/rss/all', plugin_type: 'preset_vcru' },
-  { name: 'TechCrunch', feed_url: 'https://techcrunch.com/feed/', plugin_type: 'preset_techcrunch' },
+  { name: 'Habr', feed_url: 'https://habr.com/ru/rss/best/daily/', plugin_type: 'rss' },
+  { name: 'VC.ru', feed_url: 'https://vc.ru/rss/all', plugin_type: 'rss' },
+  { name: 'TechCrunch', feed_url: 'https://techcrunch.com/feed/', plugin_type: 'rss' },
 ];
+
 
 export async function POST() {
   try {
