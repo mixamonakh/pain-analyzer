@@ -27,6 +27,7 @@ export interface ConnectorConfig {
   fetchDelayMs: number;
   maxItems: number;
   proxyUrl?: string;
+  timeWindowHours?: number;
 }
 
 export interface FetchResult {

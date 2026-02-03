@@ -6,11 +6,19 @@ import { db } from '@/db';
 import { sources } from '@/db/schema';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import { extractTelegramChannelName, isTelegramUrl } from '@/lib/telegram-utils';
+import {
+  MAX_AUTO_NAME_LENGTH,
+  RSS_FETCH_TIMEOUT_MS,
+  RSS_MAX_CONTENT_SIZE,
+  BULK_IMPORT_DELAY_MS,
+  TELEGRAM_FALLBACK_NAME,
+} from '@/lib/connectors/constants';
 
 interface ParsedSource {
   url: string;
   name?: string;
-  type: 'rss' | 'telegram'; // Убираем null, фильтруем раньше
+  type: 'rss' | 'telegram';
 }
 
 export async function POST(req: NextRequest) {
@@ -35,7 +43,7 @@ export async function POST(req: NextRequest) {
       const customName = parts[1] || undefined;
 
       const type = detectSourceType(url);
-      if (!type) continue; // Пропускаем невалидные
+      if (!type) continue;
 
       parsed.push({ url, name: customName, type });
     }
@@ -54,11 +62,12 @@ export async function POST(req: NextRequest) {
         if (source.name) {
           finalName = source.name;
         } else if (source.type === 'telegram') {
-          finalName = extractTelegramName(source.url);
+          const channelName = extractTelegramChannelName(source.url);
+          finalName = channelName || `${TELEGRAM_FALLBACK_NAME}-${Date.now()}`;
         } else {
           // source.type === 'rss'
           const rssTitle = await fetchRSSTitle(source.url);
-          finalName = rssTitle || source.url.substring(0, 50);
+          finalName = rssTitle || source.url.substring(0, MAX_AUTO_NAME_LENGTH);
         }
 
         const result = await db
@@ -66,13 +75,18 @@ export async function POST(req: NextRequest) {
           .values({
             name: finalName,
             feed_url: source.url,
-            plugin_type: source.type, // Теперь всегда 'rss' | 'telegram'
+            plugin_type: source.type,
             enabled: 1,
             created_at: Date.now(),
           })
           .returning();
 
         added.push(result[0]);
+
+        // Rate limiting: задержка между источниками
+        if (source.type === 'rss') {
+          await new Promise((resolve) => setTimeout(resolve, BULK_IMPORT_DELAY_MS));
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         errors.push(`${source.url}: ${msg}`);
@@ -92,7 +106,7 @@ export async function POST(req: NextRequest) {
 }
 
 function detectSourceType(url: string): 'rss' | 'telegram' | null {
-  if (url.startsWith('@') || url.includes('t.me/') || url.includes('telegram.me/')) {
+  if (isTelegramUrl(url)) {
     return 'telegram';
   }
 
@@ -107,27 +121,14 @@ function detectSourceType(url: string): 'rss' | 'telegram' | null {
   return null;
 }
 
-function extractTelegramName(url: string): string {
-  if (url.startsWith('@')) {
-    return url.substring(1);
-  }
-
-  const match = url.match(/t\.me\/(?:s\/)?([^/?]+)/);
-  if (match) {
-    return match[1];
-  }
-
-  return 'telegram-channel';
-}
-
 async function fetchRSSTitle(url: string): Promise<string | null> {
   try {
     const response = await axios.get(url, {
-      timeout: 5000,
+      timeout: RSS_FETCH_TIMEOUT_MS,
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; PainAnalyzer/1.0)',
       },
-      maxContentLength: 500000,
+      maxContentLength: RSS_MAX_CONTENT_SIZE,
     });
 
     const html = response.data;

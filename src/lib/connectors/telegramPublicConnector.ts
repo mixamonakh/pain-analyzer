@@ -4,6 +4,13 @@ import type { ConnectorConfig, FetchResult, RawItem } from './types';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { sleep } from '@/lib/sleep';
+import { logger } from '@/lib/logger';
+import { extractTelegramChannelName } from '@/lib/telegram-utils';
+import {
+  TELEGRAM_SELECTORS,
+  DEFAULT_TIME_WINDOW_HOURS,
+  MAX_TITLE_LENGTH,
+} from './constants';
 
 export class TelegramPublicConnector implements IConnector {
   readonly type = 'telegram' as const;
@@ -13,14 +20,15 @@ export class TelegramPublicConnector implements IConnector {
     const items: RawItem[] = [];
 
     try {
-      const channelName = this.extractChannelName(config.url);
+      const channelName = extractTelegramChannelName(config.url);
       if (!channelName) {
         errors.push(`Invalid Telegram URL format: ${config.url}`);
         return { items: [], errors };
       }
 
       const webUrl = `https://t.me/s/${channelName}`;
-      console.log(`[TG] Fetching from: ${webUrl}`);
+
+      logger.info({ channelName, webUrl }, 'Fetching Telegram channel');
 
       if (config.fetchDelayMs > 0) {
         await sleep(config.fetchDelayMs);
@@ -41,25 +49,21 @@ export class TelegramPublicConnector implements IConnector {
           'Sec-Fetch-Mode': 'navigate',
           'Sec-Fetch-Site': 'none',
         },
-        ...(config.proxyUrl && {
-          proxy: false,
-          httpsAgent: this.createProxyAgent(config.proxyUrl),
-        }),
+        // TODO: Добавить поддержку прокси когда понадобится
+        // ...(config.proxyUrl && { httpsAgent: createProxyAgent(config.proxyUrl) }),
       });
 
-      console.log(`[TG] Response status: ${response.status}`);
+      logger.info({ status: response.status }, 'Telegram response received');
 
       const html = response.data;
       const $ = cheerio.load(html);
 
-      const messages = $('.tgme_widget_message');
-      console.log(`[TG] Found ${messages.length} messages on page`);
+      const messages = $(TELEGRAM_SELECTORS.MESSAGE);
+      logger.info({ count: messages.length }, 'Found messages on page');
 
-      // Проверяем есть ли вообще контент
       if (messages.length === 0) {
-        // Возможно канал приватный или не существует
         const pageTitle = $('title').text();
-        console.log(`[TG] Page title: ${pageTitle}`);
+        logger.warn({ pageTitle }, 'No messages found');
 
         if (pageTitle.includes('not found') || pageTitle.includes('Private channel')) {
           errors.push(`Channel not found or private: ${channelName}`);
@@ -70,7 +74,8 @@ export class TelegramPublicConnector implements IConnector {
       }
 
       const now = Date.now();
-      const dayAgo = now - 24 * 60 * 60 * 1000;
+      const timeWindowMs = DEFAULT_TIME_WINDOW_HOURS * 60 * 60 * 1000;
+      const cutoffTime = now - timeWindowMs;
 
       let collected = 0;
       let skippedOld = 0;
@@ -82,33 +87,32 @@ export class TelegramPublicConnector implements IConnector {
         try {
           const $msg = $(element);
 
-          const dataPost = $msg.attr('data-post');
+          const dataPost = $msg.attr(TELEGRAM_SELECTORS.DATA_POST_ATTR);
           if (!dataPost) return;
 
           const messageId = dataPost.split('/')[1];
           if (!messageId) return;
 
           // Извлекаем дату
-          const $time = $msg.find('.tgme_widget_message_date time');
-          const datetime = $time.attr('datetime');
+          const $time = $msg.find(TELEGRAM_SELECTORS.DATE);
+          const datetime = $time.attr(TELEGRAM_SELECTORS.DATETIME_ATTR);
           let publishedAt: number | null = null;
 
           if (datetime) {
             const date = new Date(datetime);
             publishedAt = date.getTime();
 
-            // Фильтр: только за последние 24 часа
-            if (publishedAt < dayAgo) {
+            // Фильтр по времени
+            if (publishedAt < cutoffTime) {
               skippedOld++;
               return;
             }
           }
 
-          // Извлекаем текст сообщения
-          const $text = $msg.find('.tgme_widget_message_text');
+          // Извлекаем текст
+          const $text = $msg.find(TELEGRAM_SELECTORS.TEXT);
           const textContent = $text.text().trim();
 
-          // Пропускаем сообщения без текста
           if (!textContent) {
             skippedNoText++;
             return;
@@ -117,7 +121,7 @@ export class TelegramPublicConnector implements IConnector {
           const contentBody = $.html($msg);
           const messageUrl = `https://t.me/${channelName}/${messageId}`;
 
-          const titleLine = textContent.split('\n')[0].substring(0, 100);
+          const titleLine = textContent.split('\n')[0].substring(0, MAX_TITLE_LENGTH);
           const title = titleLine || `<telegram>: ${channelName}`;
 
           const rawItem: RawItem = {
@@ -149,31 +153,17 @@ export class TelegramPublicConnector implements IConnector {
         return;
       });
 
-      console.log(`[TG] Collected: ${collected}, Skipped (old): ${skippedOld}, Skipped (no text): ${skippedNoText}`);
+      logger.info(
+        { collected, skippedOld, skippedNoText },
+        'Telegram fetch completed'
+      );
 
       return { items, errors };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[TG] Fetch error:`, err);
+      logger.error({ err }, 'Telegram fetch error');
       errors.push(`Telegram fetch error: ${msg}`);
       return { items: [], errors };
     }
-  }
-
-  private extractChannelName(url: string): string | null {
-    if (url.startsWith('@')) {
-      return url.substring(1);
-    }
-
-    const match = url.match(/t\.me\/(?:s\/)?([^/?]+)/);
-    if (match) {
-      return match[1];
-    }
-
-    return null;
-  }
-
-  private createProxyAgent(proxyUrl: string): any {
-    return undefined;
   }
 }
