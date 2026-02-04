@@ -30,7 +30,10 @@ export const documents = sqliteTable('documents', {
   published_at: integer('published_at'),
   fetched_at: integer('fetched_at').notNull(),
   content_hash: text('content_hash').notNull(),
-  excluded: integer('excluded').notNull().default(0), // NEW: 0 = active, 1 = filtered out
+  excluded: integer('excluded').notNull().default(0), // 0 = active, 1 = filtered out
+  // NEW FIELDS for processing system
+  published: integer('published').notNull().default(0), // 0 = draft (belongs to run), 1 = published to global base
+  metadata_json: text('metadata_json'), // Arbitrary data from connectors (VK likes, TG reactions, etc)
 });
 
 // NEW TABLE: Сырой контент без потерь
@@ -49,6 +52,41 @@ export const pipelines = sqliteTable('pipelines', {
   name: text('name').notNull(),
   operations_json: text('operations_json').notNull(), // [{"type":"dedup_url"}, ...]
   created_at: integer('created_at').notNull(),
+});
+
+// NEW TABLE: Processing versions within a run
+export const run_versions = sqliteTable('run_versions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  run_id: integer('run_id').notNull().references(() => runs.id),
+  version: integer('version').notNull(),
+  pipeline_json: text('pipeline_json').notNull(), // Pipeline config for reproducibility
+  created_at: integer('created_at').notNull(),
+  stats_json: text('stats_json'), // Top-level: total documents, clusters, duration
+  full_storage: integer('full_storage').notNull().default(0), // Flag for future full document storage
+});
+
+// NEW TABLE: Processing stage statistics
+export const run_version_stages = sqliteTable('run_version_stages', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  run_version_id: integer('run_version_id').notNull().references(() => run_versions.id),
+  stage_order: integer('stage_order').notNull(),
+  processor_id: text('processor_id').notNull(),
+  processor_name: text('processor_name').notNull(),
+  items_in: integer('items_in').notNull(),
+  items_out: integer('items_out').notNull(),
+  items_removed: integer('items_removed').notNull(),
+  clusters_created: integer('clusters_created'),
+  duration_ms: integer('duration_ms').notNull(),
+  metadata_json: text('metadata_json'), // Additional processor info
+});
+
+// NEW TABLE: Sample documents for preview and LLM analysis
+export const run_version_samples = sqliteTable('run_version_samples', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  run_version_id: integer('run_version_id').notNull().references(() => run_versions.id),
+  stage_order: integer('stage_order').notNull(),
+  sample_items_json: text('sample_items_json').notNull(), // 20-50 documents after this stage
+  sample_clusters_json: text('sample_clusters_json'), // If stage performed clustering
 });
 
 // NEW TABLE: Credentials для коннекторов (Telegram session и т.п.)
