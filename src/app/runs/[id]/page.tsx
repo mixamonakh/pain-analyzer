@@ -1,3 +1,5 @@
+// src/app/runs/[id]/page.tsx
+
 export const runtime = 'nodejs';
 
 import { sqlite, db } from '@/db';
@@ -69,10 +71,13 @@ export default async function RunDetailsPage({
       )}
 
       <div className="flex gap-4">
-        <ExportButton runId={runId} />
-        <Link href={`/api/logs?runId=${runId}`} className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded text-sm">
-          Логи JSONL
+        <Link
+          href={`/runs/${runId}/live`}
+          className="px-4 py-2 bg-blue-900/30 text-blue-400 hover:bg-blue-900/50 rounded text-sm font-semibold"
+        >
+          📡 Live-мониторинг
         </Link>
+        <ExportButton runId={runId} />
       </div>
 
       <div className="mt-8">
