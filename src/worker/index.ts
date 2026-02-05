@@ -25,6 +25,8 @@ interface Config {
 
 let activeRunId: number | null = null;
 
+const DRAFT_STATUS = 'draft' as const;
+
 async function loadConfig(): Promise<Config> {
   const rows = (await db.query.config.findMany()) as any[];
   const parsed: Record<string, any> = {};
@@ -192,8 +194,10 @@ async function fetchRawContent(
 
           // Дедупликация ТОЛЬКО внутри текущего run (draft документы)
           const existing = sqlite
-            .prepare('SELECT id FROM documents WHERE run_id = ? AND normalized_url = ? AND status = "draft"')
-            .get(runId, normalizedUrl) as any;
+            .prepare(
+              'SELECT id FROM documents WHERE run_id = ? AND normalized_url = ? AND status = ?'
+            )
+            .get(runId, normalizedUrl, DRAFT_STATUS) as any;
 
           let documentId: number;
 
@@ -212,14 +216,7 @@ async function fetchRawContent(
               WHERE id = ?
             `
               )
-              .run(
-                rawItem.title,
-                preview,
-                rawItem.publishedAt,
-                Date.now(),
-                contentHash,
-                existing.id
-              );
+              .run(rawItem.title, preview, rawItem.publishedAt, Date.now(), contentHash, existing.id);
 
             // Обновляем FTS
             sqlite.prepare('DELETE FROM documents_fts WHERE rowid = ?').run(existing.id);
@@ -235,11 +232,11 @@ async function fetchRawContent(
             const normalizedPreview = preview.toLowerCase().trim();
             const contentHash = md5Hash(normalizedTitle + '\n' + normalizedPreview);
 
-            const result = sqlite
+            const insertResult = sqlite
               .prepare(
                 `
               INSERT INTO documents (source_id, run_id, url, normalized_url, title, text_preview, published_at, fetched_at, content_hash, excluded, status)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'draft')
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
             `
               )
               .run(
@@ -251,10 +248,11 @@ async function fetchRawContent(
                 preview,
                 rawItem.publishedAt,
                 Date.now(),
-                contentHash
+                contentHash,
+                DRAFT_STATUS
               ) as any;
 
-            documentId = result.lastInsertRowid;
+            documentId = insertResult.lastInsertRowid;
 
             // НЕ добавляем draft в FTS (FTS только для published)
           }
@@ -313,7 +311,13 @@ async function performAndSaveClustering(
         VALUES (?, ?, ?, ?, ?)
       `
         )
-        .run(runId, cluster.title, cluster.mentions_count, cluster.top_terms_json, cluster.avg_similarity) as any;
+        .run(
+          runId,
+          cluster.title,
+          cluster.mentions_count,
+          cluster.top_terms_json,
+          cluster.avg_similarity
+        ) as any;
 
       const clusterId = result.lastInsertRowid;
 
@@ -346,8 +350,8 @@ async function cleanupOldData(config: Config): Promise<void> {
 
   const transaction = sqlite.transaction(() => {
     const oldDocs = sqlite
-      .prepare('SELECT id FROM documents WHERE fetched_at < ? AND status = "draft"')
-      .all(thresholdMs) as Array<any>;
+      .prepare('SELECT id FROM documents WHERE fetched_at < ? AND status = ?')
+      .all(thresholdMs, DRAFT_STATUS) as Array<any>;
 
     oldDocs.forEach((doc) => {
       sqlite.prepare('DELETE FROM raw_items WHERE document_id = ?').run(doc.id);
@@ -355,7 +359,9 @@ async function cleanupOldData(config: Config): Promise<void> {
       sqlite.prepare('DELETE FROM documents WHERE id = ?').run(doc.id);
     });
 
-    sqlite.prepare('DELETE FROM clusters WHERE run_id NOT IN (SELECT id FROM runs WHERE finished_at > ?)').run(thresholdMs);
+    sqlite
+      .prepare('DELETE FROM clusters WHERE run_id NOT IN (SELECT id FROM runs WHERE finished_at > ?)')
+      .run(thresholdMs);
   });
 
   transaction();
@@ -438,8 +444,8 @@ async function runWorker(): Promise<void> {
 
       // Подсчёт draft документов для статистики
       const docsStats = sqlite
-        .prepare('SELECT COUNT(*) as total FROM documents WHERE run_id = ? AND status = "draft"')
-        .get(runId) as any;
+        .prepare('SELECT COUNT(*) as total FROM documents WHERE run_id = ? AND status = ?')
+        .get(runId, DRAFT_STATUS) as any;
 
       const { clustersCreated, singles } = await performAndSaveClustering(runId, config);
 
