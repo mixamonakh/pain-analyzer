@@ -8,6 +8,7 @@ import { eq } from 'drizzle-orm';
 import Link from 'next/link';
 import ExportButton from '@/components/ExportButton';
 import ClustersListWithSearch from '@/components/ClustersListWithSearch';
+import ProcessingPanel from '@/components/processing/ProcessingPanel';
 
 export default async function RunDetailsPage({
   params,
@@ -79,6 +80,8 @@ export default async function RunDetailsPage({
         </Link>
         <ExportButton runId={runId} />
       </div>
+
+      <ProcessingPanel runId={runId} />
 
       <div className="mt-8">
         <h2 className="text-2xl font-semibold mb-4">Кластеры</h2>
