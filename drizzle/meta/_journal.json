@@ -8,6 +8,13 @@
       "when": 1769112871309,
       "tag": "0000_fearless_songbird",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1770307151836,
+      "tag": "0001_pink_newton_destine",
+      "breakpoints": true
     }
   ]
 }
