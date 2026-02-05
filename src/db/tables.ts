@@ -1,5 +1,6 @@
 // src/db/tables.ts
 import { sqliteTable, integer, text, real, primaryKey, uniqueIndex, index } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
 
 export const sources = sqliteTable('sources', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -39,7 +40,7 @@ export const documents = sqliteTable('documents', {
   metadata_json: text('metadata_json'), // Arbitrary data from connectors (VK likes, TG reactions, etc)
 }, (t) => ({
   // Уникальный индекс: один published документ на normalized_url
-  publishedUrlIdx: uniqueIndex('documents_published_url_idx').on(t.normalized_url, t.status).where(t.status.eq('published')),
+  publishedUrlIdx: uniqueIndex('documents_published_url_idx').on(t.normalized_url).where(sql`${t.status} = 'published'`),
   // Индекс для выборки черновиков run
   runStatusIdx: index('documents_run_status_idx').on(t.run_id, t.status),
 }));
