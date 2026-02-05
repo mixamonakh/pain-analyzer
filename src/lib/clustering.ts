@@ -16,11 +16,12 @@ export async function performClustering(
   threshold: number,
   minClusterSize: number
 ): Promise<{ clusters: ClusterData[]; singles: number[] }> {
+  // Кластеризуем только DRAFT документы текущего run
   const docs = sqlite
     .prepare(
       `
     SELECT id, title, text_preview FROM documents
-    WHERE run_id = ? AND LENGTH(TRIM(text_preview)) > 0
+    WHERE run_id = ? AND status = 'draft' AND LENGTH(TRIM(text_preview)) > 0
     ORDER BY LENGTH(title) + LENGTH(text_preview) DESC
   `
     )
