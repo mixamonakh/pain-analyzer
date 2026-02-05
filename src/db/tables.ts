@@ -1,5 +1,5 @@
 // src/db/tables.ts
-import { sqliteTable, integer, text, real, primaryKey } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, integer, text, real, primaryKey, uniqueIndex, index } from 'drizzle-orm/sqlite-core';
 
 export const sources = sqliteTable('sources', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -24,17 +24,25 @@ export const documents = sqliteTable('documents', {
   source_id: integer('source_id').notNull().references(() => sources.id),
   run_id: integer('run_id').notNull().references(() => runs.id),
   url: text('url').notNull(),
-  normalized_url: text('normalized_url').notNull().unique(),
+  normalized_url: text('normalized_url').notNull(),
   title: text('title').notNull(),
   text_preview: text('text_preview').notNull(),
   published_at: integer('published_at'),
   fetched_at: integer('fetched_at').notNull(),
   content_hash: text('content_hash').notNull(),
   excluded: integer('excluded').notNull().default(0), // 0 = active, 1 = filtered out
+  
+  // NEW: Status для разделения draft/published
+  status: text('status').notNull().default('draft'), // 'draft' | 'published'
+  
   // NEW FIELDS for processing system
-  published: integer('published').notNull().default(0), // 0 = draft (belongs to run), 1 = published to global base
   metadata_json: text('metadata_json'), // Arbitrary data from connectors (VK likes, TG reactions, etc)
-});
+}, (t) => ({
+  // Уникальный индекс: один published документ на normalized_url
+  publishedUrlIdx: uniqueIndex('documents_published_url_idx').on(t.normalized_url, t.status).where(t.status.eq('published')),
+  // Индекс для выборки черновиков run
+  runStatusIdx: index('documents_run_status_idx').on(t.run_id, t.status),
+}));
 
 // NEW TABLE: Сырой контент без потерь
 export const raw_items = sqliteTable('raw_items', {
