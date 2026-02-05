@@ -125,6 +125,8 @@ function getProxyUrl(proxyUrls: string[]): string | undefined {
 /**
  * ФАЗА 1: Сбор сырых данных через коннекторы
  * Сохраняет raw_items для всех источников
+ * Создаёт DRAFT документы (status='draft', run_id=текущий)
+ * Дедупликация только внутри текущего run
  */
 async function fetchRawContent(
   runId: number,
@@ -168,7 +170,7 @@ async function fetchRawContent(
         count: result.items.length,
       });
 
-      // Создаём временные документы и сохраняем raw в одной транзакции
+      // Создаём документы и raw в одной транзакции
       const transaction = sqlite.transaction(() => {
         result.items.forEach((rawItem) => {
           if (!rawItem.url) {
@@ -188,15 +190,15 @@ async function fetchRawContent(
             return;
           }
 
-          // Проверка дедупликации
+          // Дедупликация ТОЛЬКО внутри текущего run (draft документы)
           const existing = sqlite
-            .prepare('SELECT id FROM documents WHERE normalized_url = ?')
-            .get(normalizedUrl) as any;
+            .prepare('SELECT id FROM documents WHERE run_id = ? AND normalized_url = ? AND status = "draft"')
+            .get(runId, normalizedUrl) as any;
 
           let documentId: number;
 
           if (existing) {
-            // Документ существует - обновляем данные
+            // Обновляем существующий draft документ этого run
             const preview = rawItem.text.slice(0, config.preview_length);
             const normalizedTitle = rawItem.title.toLowerCase().trim();
             const normalizedPreview = preview.toLowerCase().trim();
@@ -206,7 +208,7 @@ async function fetchRawContent(
               .prepare(
                 `
               UPDATE documents
-              SET title = ?, text_preview = ?, published_at = ?, fetched_at = ?, content_hash = ?, run_id = ?
+              SET title = ?, text_preview = ?, published_at = ?, fetched_at = ?, content_hash = ?
               WHERE id = ?
             `
               )
@@ -216,7 +218,6 @@ async function fetchRawContent(
                 rawItem.publishedAt,
                 Date.now(),
                 contentHash,
-                runId,
                 existing.id
               );
 
@@ -228,7 +229,7 @@ async function fetchRawContent(
 
             documentId = existing.id;
           } else {
-            // Создаём новый документ
+            // Создаём новый DRAFT документ
             const preview = rawItem.text.slice(0, config.preview_length);
             const normalizedTitle = rawItem.title.toLowerCase().trim();
             const normalizedPreview = preview.toLowerCase().trim();
@@ -237,8 +238,8 @@ async function fetchRawContent(
             const result = sqlite
               .prepare(
                 `
-              INSERT INTO documents (source_id, run_id, url, normalized_url, title, text_preview, published_at, fetched_at, content_hash, excluded)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+              INSERT INTO documents (source_id, run_id, url, normalized_url, title, text_preview, published_at, fetched_at, content_hash, excluded, status)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'draft')
             `
               )
               .run(
@@ -255,10 +256,7 @@ async function fetchRawContent(
 
             documentId = result.lastInsertRowid;
 
-            // Добавляем в FTS
-            sqlite
-              .prepare('INSERT INTO documents_fts(rowid, title, text_preview) VALUES (?, ?, ?)')
-              .run(documentId, rawItem.title, preview);
+            // НЕ добавляем draft в FTS (FTS только для published)
           }
 
           // Сохраняем raw_items (всегда создаём новую запись для истории)
@@ -348,12 +346,11 @@ async function cleanupOldData(config: Config): Promise<void> {
 
   const transaction = sqlite.transaction(() => {
     const oldDocs = sqlite
-      .prepare('SELECT id FROM documents WHERE fetched_at < ?')
+      .prepare('SELECT id FROM documents WHERE fetched_at < ? AND status = "draft"')
       .all(thresholdMs) as Array<any>;
 
     oldDocs.forEach((doc) => {
       sqlite.prepare('DELETE FROM raw_items WHERE document_id = ?').run(doc.id);
-      sqlite.prepare('DELETE FROM documents_fts WHERE rowid = ?').run(doc.id);
       sqlite.prepare('DELETE FROM cluster_documents WHERE document_id = ?').run(doc.id);
       sqlite.prepare('DELETE FROM documents WHERE id = ?').run(doc.id);
     });
@@ -363,7 +360,7 @@ async function cleanupOldData(config: Config): Promise<void> {
 
   transaction();
 
-  logEvent('info', 'db', `Cleaned up old data (${thresholdMs})`, {});
+  logEvent('info', 'db', `Cleaned up old draft data (${thresholdMs})`, {});
 }
 
 async function runWorker(): Promise<void> {
@@ -421,7 +418,7 @@ async function runWorker(): Promise<void> {
       const config = await loadConfig();
       const startTime = Date.now();
 
-      // ФАЗА 1+2: Fetch raw content и создание documents (двухфазно в одной транзакции)
+      // ФАЗА 1+2: Fetch raw content и создание DRAFT documents
       const { totalFetched, totalErrors } = await fetchRawContent(runId, config);
 
       if (totalFetched === 0) {
@@ -439,9 +436,9 @@ async function runWorker(): Promise<void> {
         continue;
       }
 
-      // Подсчёт новых/обновлённых документов для статистики
+      // Подсчёт draft документов для статистики
       const docsStats = sqlite
-        .prepare('SELECT COUNT(*) as total FROM documents WHERE run_id = ?')
+        .prepare('SELECT COUNT(*) as total FROM documents WHERE run_id = ? AND status = "draft"')
         .get(runId) as any;
 
       const { clustersCreated, singles } = await performAndSaveClustering(runId, config);
@@ -454,8 +451,8 @@ async function runWorker(): Promise<void> {
       const stats: ExportStats = {
         sources_processed: processedSources.length,
         docs_fetched: totalFetched,
-        docs_new: docsStats.total || 0, // Упрощено: считаем все документы run
-        docs_updated: 0, // TODO: точный подсчёт обновлений
+        docs_new: docsStats.total || 0,
+        docs_updated: 0,
         clusters_created: clustersCreated,
         singles: singles,
         duration_ms: duration,
