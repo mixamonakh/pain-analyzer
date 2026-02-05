@@ -1,7 +1,7 @@
 // src/lib/processing/pipeline-executor.ts
 import { db } from '@/db';
 import { documents, raw_items, sources } from '@/db/tables';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { getProcessor, validatePipeline } from './registry';
 import type { PipelineConfig, ProcessingItem, StageStats, ClusterData, ProcessorResult } from './types';
 
@@ -76,7 +76,7 @@ async function loadRunDocuments(runId: number, limit?: number): Promise<Processi
     .from(documents)
     .where(and(
       eq(documents.run_id, runId),
-      eq(documents.published, 0) // Только черновики
+      eq(documents.status, 'draft') // FIXED: используем status вместо published
     ));
 
   if (limit) {
@@ -89,25 +89,25 @@ async function loadRunDocuments(runId: number, limit?: number): Promise<Processi
     return [];
   }
 
-  // Получаем source информацию
+  // FIXED: Получаем все необходимые sources (не только первый)
   const sourceIds = [...new Set(docs.map(d => d.source_id))];
   const sourcesData = await db
     .select()
     .from(sources)
-    .where(eq(sources.id, sourceIds[0])); // TODO: оптимизировать для множественных source
+    .where(inArray(sources.id, sourceIds));
 
   const sourcesMap = new Map(sourcesData.map(s => [s.id, s]));
 
-  // Получаем последний raw_item для каждого документа
+  // FIXED: Получаем raw_items для всех документов (не только первого)
   const docIds = docs.map(d => d.id);
-  const rawItems = await db
+  const rawItemsData = await db
     .select()
     .from(raw_items)
-    .where(eq(raw_items.document_id, docIds[0])); // TODO: оптимизировать
+    .where(inArray(raw_items.document_id, docIds));
 
   // Группируем raw_items по document_id и берём последний
   const rawItemsMap = new Map<number, any>();
-  for (const rawItem of rawItems) {
+  for (const rawItem of rawItemsData) {
     const existing = rawItemsMap.get(rawItem.document_id);
     if (!existing || rawItem.fetched_at > existing.fetched_at) {
       rawItemsMap.set(rawItem.document_id, rawItem);
