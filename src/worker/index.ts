@@ -4,7 +4,6 @@ import { runs, sources, documents, clusters, cluster_documents, raw_items } from
 import { eq } from 'drizzle-orm';
 import { normalizeUrl } from '@/lib/normalizeUrl';
 import { md5Hash } from '@/lib/hashing';
-import striptags from 'striptags';
 import { performClustering } from '@/lib/clustering';
 import { exportRunData, type ExportStats } from '@/lib/export';
 import { logEvent, setCurrentRunId, logger } from '@/lib/logger';
@@ -203,10 +202,8 @@ async function fetchRawContent(
 
           if (existing) {
             // Обновляем существующий draft документ этого run
-            const preview = rawItem.text.slice(0, config.preview_length);
             const normalizedTitle = rawItem.title.toLowerCase().trim();
-            const normalizedPreview = preview.toLowerCase().trim();
-            const contentHash = md5Hash(normalizedTitle + '\n' + normalizedPreview);
+            const contentHash = md5Hash(normalizedTitle + '\n' + md5Hash(rawItem.contentBody));
 
             sqlite
               .prepare(
@@ -216,21 +213,13 @@ async function fetchRawContent(
               WHERE id = ?
             `
               )
-              .run(rawItem.title, preview, rawItem.publishedAt, Date.now(), contentHash, existing.id);
-
-            // Обновляем FTS
-            sqlite.prepare('DELETE FROM documents_fts WHERE rowid = ?').run(existing.id);
-            sqlite
-              .prepare('INSERT INTO documents_fts(rowid, title, text_preview) VALUES (?, ?, ?)')
-              .run(existing.id, rawItem.title, preview);
+              .run(rawItem.title, '', rawItem.publishedAt, Date.now(), contentHash, existing.id);
 
             documentId = existing.id;
           } else {
             // Создаём новый DRAFT документ
-            const preview = rawItem.text.slice(0, config.preview_length);
             const normalizedTitle = rawItem.title.toLowerCase().trim();
-            const normalizedPreview = preview.toLowerCase().trim();
-            const contentHash = md5Hash(normalizedTitle + '\n' + normalizedPreview);
+            const contentHash = md5Hash(normalizedTitle + '\n' + md5Hash(rawItem.contentBody));
 
             const insertResult = sqlite
               .prepare(
@@ -245,7 +234,7 @@ async function fetchRawContent(
                 rawItem.url,
                 normalizedUrl,
                 rawItem.title,
-                preview,
+                '',
                 rawItem.publishedAt,
                 Date.now(),
                 contentHash,
