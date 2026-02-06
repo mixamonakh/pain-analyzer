@@ -1,0 +1,44 @@
+# --- зависимости / сборка ---
+node_modules/
+.next/
+out/
+dist/
+build/
+coverage/
+
+# --- env/секреты (оставляем пример) ---
+.env
+.env.*
+!.env.example
+
+# --- TS/кэш ---
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# --- SQLite (у тебя pain-analyzer.db + -wal/-shm) ---
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.sqlite*
+*.wal
+*.shm
+
+# --- данные рантайма проекта (у тебя они есть) ---
+exports/
+logs/
+
+# --- локальные/внешние “технические” каталоги вокруг проекта ---
+.lh/
+**/.lh/
+
+# --- Cursor/IDE мусор ---
+.cursor/
+**/.cursor/
+.DS_Store
+Thumbs.db
+
+# --- логи/трейсы ---
+*.log
+
+na-budujee.md

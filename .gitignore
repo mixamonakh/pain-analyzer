@@ -12,3 +12,4 @@ logs/
 exports/
 .DS_Store
 *.log
+.lh/
