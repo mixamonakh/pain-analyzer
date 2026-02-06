@@ -5,6 +5,7 @@ import { excludePhrasesProcessor } from './exclude-phrases';
 import { trimTextProcessor } from './trim-text';
 import { filterAuthorProcessor } from './filter-author';
 import { clusterTfidfProcessor } from './cluster-tfidf';
+import { extractTextProcessor } from './extract_text';
 import { extractHtmlProcessor } from './extract-html';
 
 /**
@@ -13,7 +14,7 @@ import { extractHtmlProcessor } from './extract-html';
  */
 export function initializeProcessors() {
   // Регистрируем все базовые процессоры
-  registerProcessor(extractHtmlProcessor); // Первым!
+  registerProcessor(extractTextProcessor); // stage 0, первым
   registerProcessor(dedupUrlProcessor);
   registerProcessor(excludePhrasesProcessor);
   registerProcessor(trimTextProcessor);
@@ -26,6 +27,7 @@ initializeProcessors();
 
 // Ре-экспорт для удобства
 export {
+  extractTextProcessor,
   extractHtmlProcessor,
   dedupUrlProcessor,
   excludePhrasesProcessor,
