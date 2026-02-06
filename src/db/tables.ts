@@ -63,6 +63,28 @@ export const pipelines = sqliteTable('pipelines', {
   created_at: integer('created_at').notNull(),
 });
 
+// processor_presets
+export const processor_presets = sqliteTable('processor_presets', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  processor_id: text('processor_id').notNull(),
+  config_json: text('config_json').notNull(),
+  description: text('description'),
+  created_at: integer('created_at').notNull(),
+});
+
+// pipeline_templates
+export const pipeline_templates = sqliteTable('pipeline_templates', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  description: text('description'),
+  type: text('type').notNull(), // 'source_preprocess' | 'processing'
+  source_id: integer('source_id').references(() => sources.id),
+  pipeline_json: text('pipeline_json').notNull(),
+  is_default: integer('is_default', { mode: 'boolean' }).default(false),
+  created_at: integer('created_at').notNull(),
+});
+
 // NEW TABLE: Processing versions within a run
 export const run_versions = sqliteTable('run_versions', {
   id: integer('id').primaryKey({ autoIncrement: true }),
