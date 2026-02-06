@@ -11,7 +11,10 @@ export interface ProcessingItem {
   sourceName: string;
   url: string;
   title: string;
-  text: string;
+  
+  // text заполняется процессорами, а не загружается из БД
+  // Изначально может быть пустым, экстракторы должны его заполнить из rawContent
+  text?: string;
   
   // Опциональные поля (зависят от коннектора)
   author?: string;
@@ -27,7 +30,7 @@ export interface ProcessingItem {
   // Произвольные мета-данные (лайки, репосты, etc)
   metadata?: Record<string, any>;
   
-  // Сырьё для отладки
+  // Сырьё для отладки (FIRST-CLASS - основной источник данных)
   rawItemId: number;
   rawContent: string;
   contentType: 'html' | 'json' | 'text';
