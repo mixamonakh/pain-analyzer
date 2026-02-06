@@ -7,6 +7,10 @@ export const excludePhrasesProcessor: Processor = {
   name: 'Исключение по фразам',
   description: 'Удаляет документы, содержащие указанные фразы (регистр не учитывается).',
 
+  requirements: {
+    requiredFields: ['text'], // ТРЕБУЕТ text
+  },
+
   schema: {
     phrases: {
       type: 'string[]',
@@ -28,6 +32,11 @@ export const excludePhrasesProcessor: Processor = {
     const lowercasePhrases = config.phrases.map(p => p.toLowerCase());
 
     const filteredItems = items.filter(item => {
+      // Пропускаем итемы без text
+      if (!item.text) {
+        return true; // Оставляем такие итемы
+      }
+
       const titleLower = item.title.toLowerCase();
       const textLower = item.text.toLowerCase();
 

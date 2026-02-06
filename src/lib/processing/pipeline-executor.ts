@@ -17,6 +17,7 @@ export interface ExecutePipelineResult {
 
 /**
  * Преобразование document + raw_item в ProcessingItem
+ * ТЕПЕРЬ: text НЕ загружается из БД, а заполняется процессорами из rawContent
  */
 async function documentToProcessingItem(
   doc: any,
@@ -53,14 +54,15 @@ async function documentToProcessingItem(
     sourceName: source.name,
     url: doc.url,
     title: doc.title,
-    text: doc.text_preview, // Используем text_preview как основной текст
+    // text НЕ загружается - остаётся undefined, пока процессор не заполнит
+    text: undefined,
     author,
     language,
     publishedAt: doc.published_at,
     media,
     metadata,
     rawItemId: rawItem.id,
-    rawContent: rawItem.content_body,
+    rawContent: rawItem.content_body, // ОСНОВНОЙ ИСТОЧНИК ДАННЫХ
     contentType: rawItem.content_type as 'html' | 'json' | 'text',
     fetchedAt: rawItem.fetched_at,
   };

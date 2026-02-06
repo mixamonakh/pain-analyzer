@@ -8,6 +8,10 @@ export const clusterTfidfProcessor: Processor = {
   name: 'Кластеризация TF-IDF',
   description: 'Группирует похожие документы на основе TF-IDF и косинусного расстояния.',
 
+  requirements: {
+    requiredFields: ['text'], // ТРЕБУЕТ text
+  },
+
   schema: {
     threshold: {
       type: 'number',
@@ -34,11 +38,25 @@ export const clusterTfidfProcessor: Processor = {
     const threshold = config.threshold || 0.35;
     const minClusterSize = config.minClusterSize || 2;
 
+    // Фильтруем итемы без text
+    const itemsWithText = items.filter(item => item.text);
+
+    if (itemsWithText.length === 0) {
+      return {
+        items,
+        clusters: [],
+        metadata: {
+          clustersCreated: 0,
+          skippedItemsWithoutText: items.length,
+        },
+      };
+    }
+
     // Преобразуем ProcessingItem в формат для кластеризации
-    const docsForClustering = items.map(item => ({
+    const docsForClustering = itemsWithText.map(item => ({
       id: item.id,
       title: item.title,
-      text: item.text,
+      text: item.text!, // Уже проверено
     }));
 
     // Выполняем кластеризацию
@@ -67,6 +85,8 @@ export const clusterTfidfProcessor: Processor = {
         threshold,
         minClusterSize,
         totalDocuments: items.length,
+        itemsWithText: itemsWithText.length,
+        itemsWithoutText: items.length - itemsWithText.length,
         clusteredDocuments: clusterData.reduce((sum, c) => sum + c.documents.length, 0),
       },
     };
