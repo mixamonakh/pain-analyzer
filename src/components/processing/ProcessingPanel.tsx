@@ -1,7 +1,7 @@
 // src/components/processing/ProcessingPanel.tsx
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type ProcessorMeta = {
   id: string;
@@ -78,6 +78,7 @@ function toLocalTime(seconds: number): string {
 export default function ProcessingPanel({ runId }: { runId: number }) {
   const [processors, setProcessors] = useState<ProcessorMeta[]>([]);
   const [pipeline, setPipeline] = useState<PipelineConfig>({ processors: [] });
+  const autoPreviewRef = useRef(false);
 
   const [sampleLimit, setSampleLimit] = useState<number>(50);
 
@@ -117,7 +118,7 @@ export default function ProcessingPanel({ runId }: { runId: number }) {
         const steps: PipelineStep[] = list.map((p, idx) => ({
           order: (idx + 1) * 10,
           id: p.id,
-          enabled: true,
+          enabled: false,
           config: {},
         }));
 
@@ -230,15 +231,23 @@ export default function ProcessingPanel({ runId }: { runId: number }) {
     }));
   }
 
-  function resetToAllEnabled() {
+  function resetToAllDisabled() {
     const steps: PipelineStep[] = processors.map((p, idx) => ({
       order: (idx + 1) * 10,
       id: p.id,
-      enabled: true,
+      enabled: false,
       config: {},
     }));
     setPipeline({ processors: steps });
   }
+
+  useEffect(() => {
+    if (autoPreviewRef.current) return;
+    if (processors.length === 0 || pipeline.processors.length === 0) return;
+    autoPreviewRef.current = true;
+    void runPreview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [processors.length, pipeline.processors.length]);
 
   return (
     <div className="bg-zinc-900 p-4 rounded border border-zinc-800 space-y-4">
@@ -250,7 +259,7 @@ export default function ProcessingPanel({ runId }: { runId: number }) {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={resetToAllEnabled}
+            onClick={resetToAllDisabled}
             className="px-3 py-2 rounded bg-zinc-800 hover:bg-zinc-700 text-sm"
             disabled={loadingProcessors || processors.length === 0}
           >

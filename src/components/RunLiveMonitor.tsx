@@ -41,6 +41,26 @@ export default function RunLiveMonitor({ runId, initialStatus }: RunLiveMonitorP
     }
   };
 
+  function normalizeLog(raw: any): Log {
+    let meta: Record<string, any> | null = raw.meta ?? null;
+    if (!meta && raw.meta_json) {
+      try {
+        meta = JSON.parse(raw.meta_json);
+      } catch {
+        meta = null;
+      }
+    }
+
+    return {
+      id: raw.id,
+      ts: raw.ts ?? raw.created_at ?? raw.createdAt ?? Date.now(),
+      level: raw.level,
+      component: raw.component,
+      message: raw.message,
+      meta,
+    };
+  }
+
   // Загрузка новых логов
   const fetchLogs = async () => {
     try {
@@ -51,15 +71,17 @@ export default function RunLiveMonitor({ runId, initialStatus }: RunLiveMonitorP
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
-        if (data.logs.length > 0) {
+        const rawLogs = Array.isArray(data?.logs) ? data.logs : (Array.isArray(data) ? data : []);
+        const normalized = rawLogs.map(normalizeLog).filter((log: Log) => Number.isFinite(log.id));
+        if (normalized.length > 0) {
           // Дедупликация по ID
           setLogs((prev) => {
             const existingIds = new Set(prev.map(l => l.id));
-            const newLogs = data.logs.filter((l: Log) => !existingIds.has(l.id));
+            const newLogs = normalized.filter((l: Log) => !existingIds.has(l.id));
             return [...prev, ...newLogs];
           });
 
-          const maxId = Math.max(...data.logs.map((l: Log) => l.id));
+          const maxId = Math.max(...normalized.map((l: Log) => l.id));
           setLastId(maxId);
         }
       }

@@ -48,11 +48,19 @@ export async function POST(
     // Выполняем пайплайн
     const result = await executePipeline(runId, pipeline, { sampleLimit });
 
+    const sampleItems = result.items.slice(0, 20).map((item) => ({
+      id: item.id,
+      title: item.title,
+      url: item.url,
+      sourceName: item.sourceName,
+      text: item.text ?? item.rawContent ?? '',
+    }));
+
     return NextResponse.json({
       stages: result.stages,
       itemsCount: result.items.length,
       clustersCount: result.clusters?.length || 0,
-      sampleItems: result.items.slice(0, 20), // Первые 20 для превью
+      sampleItems,
       clusters: result.clusters,
     });
   } catch (error) {

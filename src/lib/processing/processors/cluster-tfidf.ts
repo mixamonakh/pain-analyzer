@@ -1,6 +1,6 @@
 // src/lib/processing/processors/cluster-tfidf.ts
 import type { Processor, ProcessingItem, ProcessorResult, ClusterData } from '../types';
-import { performClustering } from '@/lib/clustering';
+import { performClustering } from '@/lib/processing/clustering';
 
 export const clusterTfidfProcessor: Processor = {
   id: 'cluster_tfidf',
@@ -60,34 +60,22 @@ export const clusterTfidfProcessor: Processor = {
     }));
 
     // Выполняем кластеризацию
-    const clusters = await performClustering(docsForClustering, {
+    const clusters: ClusterData[] = await performClustering(docsForClustering, {
       threshold,
       minClusterSize,
     });
 
-    // Преобразуем результат в ClusterData
-    const clusterData: ClusterData[] = clusters.map(cluster => ({
-      title: cluster.title,
-      mentionsCount: cluster.documents.length,
-      topTerms: cluster.topTerms,
-      avgSimilarity: cluster.avgSimilarity,
-      documents: cluster.documents.map(doc => ({
-        id: doc.id,
-        similarity: doc.similarity,
-      })),
-    }));
-
     return {
       items, // Кластеризация не изменяет документы
-      clusters: clusterData,
+      clusters,
       metadata: {
-        clustersCreated: clusterData.length,
+        clustersCreated: clusters.length,
         threshold,
         minClusterSize,
         totalDocuments: items.length,
         itemsWithText: itemsWithText.length,
         itemsWithoutText: items.length - itemsWithText.length,
-        clusteredDocuments: clusterData.reduce((sum, c) => sum + c.documents.length, 0),
+        clusteredDocuments: clusters.reduce((sum, c) => sum + c.documents.length, 0),
       },
     };
   },
