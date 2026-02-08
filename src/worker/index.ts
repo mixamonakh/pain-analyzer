@@ -436,7 +436,10 @@ async function runWorker(): Promise<void> {
         .prepare('SELECT COUNT(*) as total FROM documents WHERE run_id = ? AND status = ?')
         .get(runId, DRAFT_STATUS) as any;
 
-      const { clustersCreated, singles } = await performAndSaveClustering(runId, config);
+      const clusteringPerformed = false;
+      const clustersCreated = 0;
+      const singles = 0;
+      logEvent('info', 'cluster', 'Skipping clustering in worker; use preview pipeline', { runId });
 
       const duration = Date.now() - startTime;
       const processedSources = await db.query.sources.findMany({
@@ -451,7 +454,7 @@ async function runWorker(): Promise<void> {
         clusters_created: clustersCreated,
         singles: singles,
         duration_ms: duration,
-        warning: clustersCreated === 0 && totalFetched > 0 ? 'insufficient_data' : null,
+        warning: clusteringPerformed && clustersCreated === 0 && totalFetched > 0 ? 'insufficient_data' : null,
       };
 
       exportRunData(runId);
