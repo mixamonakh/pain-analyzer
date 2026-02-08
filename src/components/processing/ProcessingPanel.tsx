@@ -451,7 +451,7 @@ export default function ProcessingPanel({ runId }: { runId: number }) {
                 >
                   <div className="text-sm font-semibold">{item.title || '(без заголовка)'}</div>
                   <div className="text-xs text-zinc-400">{item.sourceName}</div>
-                  <div className="text-xs text-zinc-500 mt-1 line-clamp-2">{item.text}</div>
+                  <div className="text-xs text-zinc-500 mt-1 break-words whitespace-pre-wrap">{item.text}</div>
                 </a>
               ))}
             </div>
